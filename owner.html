@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owner Dashboard - AI Chat</title>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --sidebar-bg: #121217;
+            --card-bg: #1a1b23;
+            --glass-bg: rgba(255,255,255,0.04);
+            --glass-border: rgba(255,255,255,0.08);
+            --text: #f1f1f3;
+            --text-secondary: #71717a;
+            --accent: #7c3aed;
+            --accent-hover: #6d28d9;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --warning: #f59e0b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .dashboard-container { display: flex; min-height: 100vh; }
+
+        .dashboard-sidebar {
+            width: 240px;
+            min-width: 240px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--glass-border);
+            padding: 20px 12px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .dashboard-logo {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            padding: 0 12px;
+        }
+
+        .dashboard-nav { display: flex; flex-direction: column; gap: 4px; }
+
+        .dashboard-nav-item {
+            padding: 12px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: block;
+            background: none;
+            border: none;
+            text-align: left;
+            font-family: inherit;
+        }
+
+        .dashboard-nav-item:hover { background: var(--glass-bg); color: var(--text); }
+        .dashboard-nav-item.active { background: rgba(124,58,237,0.2); color: var(--accent); }
+
+        .dashboard-main {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+        }
+
+        .dashboard-header { margin-bottom: 24px; }
+        .dashboard-title { font-size: 24px; font-weight: 700; }
+        .dashboard-subtitle { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .stat-label { color: var(--text-secondary); font-size: 13px; margin-bottom: 8px; }
+        .stat-value { font-size: 32px; font-weight: 700; }
+
+        .data-table {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .data-table-header {
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .data-table-title { font-weight: 600; }
+        .table-wrapper { overflow-x: auto; }
+
+        table { width: 100%; border-collapse: collapse; }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--glass-border);
+            font-size: 13px;
+        }
+
+        th {
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge.user { background: rgba(124,58,237,0.2); color: #a78bfa; }
+        .badge.premium { background: rgba(245,158,11,0.2); color: #fbbf24; }
+        .badge.owner { background: rgba(34,197,94,0.2); color: #4ade80; }
+        .badge.banned { background: rgba(239,68,68,0.2); color: #f87171; }
+        .badge.active { background: rgba(34,197,94,0.2); color: #4ade80; }
+        .badge.private { background: rgba(239,68,68,0.2); color: #f87171; }
+        .badge.online { background: rgba(34,197,94,0.2); color: #4ade80; }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-secondary { background: var(--glass-bg); color: var(--text); border: 1px solid var(--glass-border); }
+
+        .btn-sm {
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 600;
+            margin: 2px;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .btn-sm:hover { opacity: 0.8; }
+        .btn-sm.primary { background: var(--accent); color: white; }
+        .btn-sm.danger { background: var(--danger); color: white; }
+        .btn-sm.success { background: var(--success); color: white; }
+        .btn-sm.warning { background: var(--warning); color: black; }
+
+        .form-group { margin-bottom: 16px; }
+
+        .form-label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .form-input:focus { border-color: var(--accent); }
+        textarea.form-input { resize: vertical; min-height: 80px; }
+        select.form-input option { background: var(--card-bg); color: var(--text); }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-overlay.hidden { display: none; }
+
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 28px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+        .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+        .hidden { display: none !important; }
+        .text-center { text-align: center; color: var(--text-secondary); }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            font-family: inherit;
+            font-size: 13px;
+            animation: fadeUp 0.3s ease;
+        }
+
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        .premium-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .premium-option {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            background: var(--bg);
+            color: var(--text);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .premium-option:hover { border-color: var(--warning); background: rgba(245,158,11,0.1); }
+        .premium-option.permanent { border-color: var(--success); color: var(--success); }
+        .premium-option.permanent:hover { background: rgba(34,197,94,0.1); }
+
+        @media (max-width: 768px) {
+            .dashboard-container { flex-direction: column; }
+            .dashboard-sidebar {
+                width: 100%;
+                min-width: auto;
+                height: auto;
+                padding: 12px;
+                position: relative;
+            }
+            .dashboard-nav {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+            .dashboard-nav-item { font-size: 12px; padding: 8px 12px; }
+            .dashboard-main { padding: 16px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="dashboardSidebar">
+            <div class="dashboard-logo">👑 Admin</div>
+            <nav class="dashboard-nav">
+                <button class="dashboard-nav-item active" data-page="dashboard" onclick="switchPage('dashboard')">📊 Dashboard</button>
+                <button class="dashboard-nav-item" data-page="users" onclick="switchPage('users')">👥 Users</button>
+                <button class="dashboard-nav-item" data-page="characters" onclick="switchPage('characters')">🤖 AI Manager</button>
+                <button class="dashboard-nav-item" data-page="logs" onclick="switchPage('logs')">📝 Logs</button>
+                <a class="dashboard-nav-item" href="/chat.html">💬 Chat App</a>
+                <button class="dashboard-nav-item" onclick="logout()">🚪 Logout</button>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="dashboard-main">
+            <!-- Dashboard -->
+            <div id="page-dashboard">
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title">Dashboard Overview</h1>
+                    <p class="dashboard-subtitle">Welcome back, Owner</p>
+                </div>
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value" id="statUsers">--</div></div>
+                    <div class="stat-card"><div class="stat-label">Total Chats</div><div class="stat-value" id="statChats">--</div></div>
+                    <div class="stat-card"><div class="stat-label">Total Messages</div><div class="stat-value" id="statMessages">--</div></div>
+                    <div class="stat-card"><div class="stat-label">AI Characters</div><div class="stat-value" id="statCharacters">--</div></div>
+                </div>
+            </div>
+
+            <!-- Users -->
+            <div id="page-users" class="hidden">
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title">User Management</h1>
+                    <p class="dashboard-subtitle">Manage all registered users</p>
+                </div>
+                <div class="data-table">
+                    <div class="data-table-header">
+                        <span class="data-table-title">All Users</span>
+                        <button class="btn-sm primary" onclick="loadUsers()">🔄 Refresh</button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr><th>Username</th><th>Role</th><th>Messages Today</th><th>Premium Exp</th><th>Status</th><th>Actions</th></tr>
+                            </thead>
+                            <tbody id="usersTableBody"><tr><td colspan="6" class="text-center">Loading...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Manager -->
+            <div id="page-characters" class="hidden">
+                <div class="dashboard-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+                    <div>
+                        <h1 class="dashboard-title">AI Character Manager</h1>
+                        <p class="dashboard-subtitle">Create, edit, and manage AI characters</p>
+                    </div>
+                    <button class="btn btn-primary" style="width:auto;" onclick="showAddForm()">+ Add AI</button>
+                </div>
+                <div class="data-table">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr><th>Avatar</th><th>Name</th><th>Model</th><th>Status</th><th>Visibility</th><th>Actions</th></tr>
+                            </thead>
+                            <tbody id="charactersTableBody"><tr><td colspan="6" class="text-center">Loading...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logs -->
+            <div id="page-logs" class="hidden">
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title">Activity Logs</h1>
+                    <p class="dashboard-subtitle">Recent system activities</p>
+                </div>
+                <div class="data-table">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr><th>Time</th><th>User</th><th>Action</th><th>Details</th><th>IP Address</th></tr>
+                            </thead>
+                            <tbody id="logsTableBody"><tr><td colspan="5" class="text-center">Loading...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Character Modal -->
+    <div class="modal-overlay hidden" id="characterModal">
+        <div class="modal-content" style="max-width:600px;">
+            <h3 class="modal-title" id="characterModalTitle">Add AI Character</h3>
+            <form id="characterForm">
+                <input type="hidden" id="editCharId">
+                <div class="form-group"><label class="form-label">Name *</label><input type="text" class="form-input" id="charName" required></div>
+                <div class="form-group"><label class="form-label">Avatar URL or Emoji</label><input type="text" class="form-input" id="charAvatar" placeholder="🤖 or https://..."></div>
+                <div class="form-group"><label class="form-label">Description</label><textarea class="form-input" id="charDescription" rows="2"></textarea></div>
+                <div class="form-group"><label class="form-label">System Prompt *</label><textarea class="form-input" id="charPrompt" rows="4" required></textarea></div>
+                <div class="form-group"><label class="form-label">Endpoint URL</label><input type="text" class="form-input" id="charEndpoint" placeholder="Leave empty for ChatEverywhere"></div>
+                <div class="form-group"><label class="form-label">Model Name</label><input type="text" class="form-input" id="charModel" value="gpt-4"></div>
+                <div class="form-group"><label class="form-label">API Key (optional)</label><input type="text" class="form-input" id="charApiKey"></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-input" id="charStatus">
+                            <option value="online">Online</option>
+                            <option value="active">Active</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="offline">Offline</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Visibility</label>
+                        <select class="form-input" id="charVisibility">
+                            <option value="all">All (Everyone)</option>
+                            <option value="public">Public</option>
+                            <option value="private">Private (Owner Only)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeCharModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="width:auto;">Save Character</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Premium Modal -->
+    <div class="modal-overlay hidden" id="premiumModal">
+        <div class="modal-content" style="max-width:400px;text-align:center;">
+            <h3 class="modal-title">Set Premium</h3>
+            <p style="color:var(--text-secondary);margin-bottom:20px;">Choose duration for <strong id="premiumUsername">user</strong></p>
+            <div class="premium-options" style="display:flex;flex-direction:column;gap:8px;">
+                <button class="premium-option" onclick="setPremium('5')">📅 5 Days</button>
+                <button class="premium-option" onclick="setPremium('10')">📅 10 Days</button>
+                <button class="premium-option" onclick="setPremium('20')">📅 20 Days</button>
+                <button class="premium-option" onclick="setPremium('30')">📅 30 Days</button>
+                <button class="premium-option permanent" onclick="setPremium('permanent')">♾️ Permanent</button>
+            </div>
+            <div class="modal-footer" style="justify-content:center;">
+                <button type="button" class="btn btn-secondary" onclick="closePremiumModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 'dashboard';
+        let allCharacters = [];
+        let premiumTargetId = null;
+
+        (async function init() {
+            try {
+                const res = await fetch('/api/auth/me');
+                const data = await res.json();
+                if (!data.user || data.user.role !== 'owner') {
+                    window.location.href = '/';
+                    return;
+                }
+                loadStats();
+                loadUsers();
+                loadCharacters();
+                loadLogs();
+
+                document.getElementById('characterForm').addEventListener('submit', saveCharacter);
+            } catch (e) {
+                window.location.href = '/';
+            }
+        })();
+
+        function switchPage(page) {
+            currentPage = page;
+            document.querySelectorAll('.dashboard-nav-item').forEach(el => el.classList.remove('active'));
+            document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
+
+            ['dashboard','users','characters','logs'].forEach(p => {
+                document.getElementById(`page-${p}`).classList.toggle('hidden', p !== page);
+            });
+
+            if (page === 'users') loadUsers();
+            if (page === 'characters') loadCharacters();
+            if (page === 'logs') loadLogs();
+            if (page === 'dashboard') loadStats();
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/owner/stats');
+                const data = await res.json();
+                document.getElementById('statUsers').textContent = data.users || 0;
+                document.getElementById('statChats').textContent = data.chats || 0;
+                document.getElementById('statMessages').textContent = data.messages || 0;
+                document.getElementById('statCharacters').textContent = data.characters || 0;
+            } catch (e) {}
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await fetch('/api/owner/users');
+                const data = await res.json();
+                const tbody = document.getElementById('usersTableBody');
+
+                tbody.innerHTML = (data.users || []).map(u => `
+                    <tr>
+                        <td><strong>${u.username}</strong></td>
+                        <td>
+                            <span class="badge ${u.role}">${u.role}</span>
+                            ${u.is_banned ? ' <span class="badge banned">banned</span>' : ''}
+                        </td>
+                        <td>${u.daily_message_count || 0}</td>
+                        <td>${u.premium_expired_at ? new Date(u.premium_expired_at).toLocaleDateString() : '-'}</td>
+                        <td>${u.is_banned ? '❌ Banned' : '✅ Active'}</td>
+                        <td>
+                            ${!u.is_banned 
+                                ? `<button class="btn-sm danger" onclick="banUser('${u.id}')">Ban</button>` 
+                                : `<button class="btn-sm success" onclick="unbanUser('${u.id}')">Unban</button>`}
+                            ${u.role !== 'premium' 
+                                ? `<button class="btn-sm warning" onclick="showPremiumModal('${u.id}','${u.username}')">⭐ Premium</button>` 
+                                : `<button class="btn-sm primary" onclick="setUserRole('${u.id}','user')">👤 User</button>`}
+                            ${u.role !== 'owner' && u.id !== 'self' 
+                                ? `<button class="btn-sm danger" onclick="deleteUser('${u.id}')">🗑️</button>` 
+                                : ''}
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {}
+        }
+
+        async function loadCharacters() {
+            try {
+                const res = await fetch('/api/owner/characters');
+                const data = await res.json();
+                allCharacters = data.characters || [];
+                const tbody = document.getElementById('charactersTableBody');
+
+                tbody.innerHTML = allCharacters.map(c => `
+                    <tr>
+                        <td style="font-size:24px;">${c.avatar_url?.startsWith('http') ? `<img src="${c.avatar_url}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" onerror="this.outerHTML='🤖'">` : (c.avatar_url || '🤖')}</td>
+                        <td><strong>${c.name}</strong></td>
+                        <td>${c.model_name || '-'}</td>
+                        <td><span class="badge online">${c.status || 'online'}</span></td>
+                        <td><span class="badge ${c.visibility === 'private' ? 'private' : 'active'}">${c.visibility || 'public'}</span></td>
+                        <td>
+                            <button class="btn-sm primary" onclick="editChar('${c.id}')">✏️ Edit</button>
+                            <button class="btn-sm danger" onclick="deleteChar('${c.id}')">🗑️ Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {}
+        }
+
+        async function loadLogs() {
+            try {
+                const res = await fetch('/api/owner/logs');
+                const data = await res.json();
+                const tbody = document.getElementById('logsTableBody');
+
+                tbody.innerHTML = (data.logs || []).map(l => `
+                    <tr>
+                        <td>${new Date(l.created_at).toLocaleString()}</td>
+                        <td>${l.user_id || '-'}</td>
+                        <td>${l.action}</td>
+                        <td>${typeof l.details === 'object' ? JSON.stringify(l.details).substring(0, 100) : (l.details || '-')}</td>
+                        <td>${l.ip_address || '-'}</td>
+                    </tr>
+                `).join('');
+            } catch (e) {}
+        }
+
+        // User actions
+        async function updateUser(id, updates) {
+            await fetch(`/api/owner/users/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+            });
+            loadUsers();
+        }
+
+        function banUser(id) { updateUser(id, { is_banned: true }); showToast('User banned', 'success'); }
+        function unbanUser(id) { updateUser(id, { is_banned: false }); showToast('User unbanned', 'success'); }
+        function setUserRole(id, role) { updateUser(id, { role }); showToast(`Role changed to ${role}`, 'success'); }
+        
+        async function deleteUser(id) {
+            if (!confirm('Permanently delete this user? This cannot be undone.')) return;
+            const res = await fetch(`/api/owner/users/${id}`, { method: 'DELETE' });
+            if (res.ok) { showToast('User deleted', 'success'); loadUsers(); }
+            else showToast('Failed to delete', 'error');
+        }
+
+        // Premium modal
+        function showPremiumModal(userId, username) {
+            premiumTargetId = userId;
+            document.getElementById('premiumUsername').textContent = username;
+            document.getElementById('premiumModal').classList.remove('hidden');
+        }
+
+        function closePremiumModal() {
+            document.getElementById('premiumModal').classList.add('hidden');
+            premiumTargetId = null;
+        }
+
+        function setPremium(duration) {
+            if (!premiumTargetId) return;
+            
+            let premiumExpiredAt = null;
+            if (duration !== 'permanent') {
+                const date = new Date();
+                date.setDate(date.getDate() + parseInt(duration));
+                premiumExpiredAt = date.toISOString();
+            } else {
+                // Permanent: set 100 years from now
+                const date = new Date();
+                date.setFullYear(date.getFullYear() + 100);
+                premiumExpiredAt = date.toISOString();
+            }
+
+            updateUser(premiumTargetId, { 
+                role: 'premium', 
+                premium_expired_at: premiumExpiredAt 
+            });
+            
+            closePremiumModal();
+            showToast(`Premium ${duration === 'permanent' ? 'Permanent' : duration + ' days'} activated!`, 'success');
+        }
+
+        // Character modal
+        function showAddForm() {
+            document.getElementById('editCharId').value = '';
+            document.getElementById('characterModalTitle').textContent = 'Add AI Character';
+            document.getElementById('characterForm').reset();
+            document.getElementById('charStatus').value = 'online';
+            document.getElementById('charVisibility').value = 'all';
+            document.getElementById('charModel').value = 'gpt-4';
+            document.getElementById('characterModal').classList.remove('hidden');
+        }
+
+        function editChar(charId) {
+            const char = allCharacters.find(c => c.id === charId);
+            if (!char) return;
+
+            document.getElementById('editCharId').value = char.id;
+            document.getElementById('characterModalTitle').textContent = 'Edit AI Character';
+            document.getElementById('charName').value = char.name || '';
+            document.getElementById('charAvatar').value = char.avatar_url || '';
+            document.getElementById('charDescription').value = char.description || '';
+            document.getElementById('charPrompt').value = char.system_prompt || '';
+            document.getElementById('charEndpoint').value = char.endpoint_url || '';
+            document.getElementById('charModel').value = char.model_name || 'gpt-4';
+            document.getElementById('charApiKey').value = char.api_key || '';
+            document.getElementById('charStatus').value = char.status || 'online';
+            document.getElementById('charVisibility').value = char.visibility || 'all';
+            document.getElementById('characterModal').classList.remove('hidden');
+        }
+
+        function closeCharModal() {
+            document.getElementById('characterModal').classList.add('hidden');
+            document.getElementById('editCharId').value = '';
+        }
+
+        async function saveCharacter(e) {
+            e.preventDefault();
+            
+            const charData = {
+                name: document.getElementById('charName').value,
+                avatar_url: document.getElementById('charAvatar').value,
+                description: document.getElementById('charDescription').value,
+                system_prompt: document.getElementById('charPrompt').value,
+                endpoint_url: document.getElementById('charEndpoint').value,
+                model_name: document.getElementById('charModel').value,
+                api_key: document.getElementById('charApiKey').value,
+                status: document.getElementById('charStatus').value,
+                visibility: document.getElementById('charVisibility').value
+            };
+
+            const editId = document.getElementById('editCharId').value;
+            const url = editId ? `/api/owner/characters/${editId}` : '/api/owner/characters';
+            const method = editId ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(charData)
+                });
+                
+                const data = await res.json();
+                if (data.character || data.message) {
+                    closeCharModal();
+                    loadCharacters();
+                    showToast(editId ? 'Character updated!' : 'Character created!', 'success');
+                } else {
+                    showToast(data.error || 'Failed to save', 'error');
+                }
+            } catch (e) {
+                showToast('Failed to save character', 'error');
+            }
+        }
+
+        async function deleteChar(charId) {
+            if (!confirm('Delete this character?')) return;
+            await fetch(`/api/owner/characters/${charId}`, { method: 'DELETE' });
+            loadCharacters();
+            showToast('Character deleted', 'success');
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        async function logout() {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>
