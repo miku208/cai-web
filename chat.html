@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#0a0a0f">
     <title>AI Chat</title>
     <style>
         :root {
@@ -18,16 +17,13 @@
         .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:49; }
         .overlay.on { display:block; }
         
-        /* SIDEBAR */
         .sidebar { width:280px; min-width:280px; background:var(--sb); border-right:1px solid var(--border); display:flex; flex-direction:column; height:100%; z-index:50; transition:transform .3s; }
         .sb-head { padding:16px; border-bottom:1px solid var(--border); }
-        .sb-head h3 { font-size:16px; font-weight:700; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
-        .btn-refresh { background:var(--acc); border:none; color:white; width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center; }
-        .sb-head input { width:100%; padding:10px 12px; background:var(--card); border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:13px; outline:none; }
-        .sb-head input:focus { border-color:var(--acc); }
-        #chatList { flex:1; overflow-y:auto; padding:6px; }
+        .sb-head h3 { font-size:16px; font-weight:700; margin-bottom:10px; display:flex; justify-content:space-between; }
+        .sb-head input { width:100%; padding:10px; background:var(--card); border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:13px; outline:none; }
+        .sb-list { flex:1; overflow-y:auto; padding:6px; }
         
-        .ai-item { display:flex; align-items:center; gap:10px; padding:12px; border-radius:12px; cursor:pointer; margin-bottom:1px; transition:background .15s; }
+        .ai-item { display:flex; align-items:center; gap:10px; padding:12px; border-radius:12px; cursor:pointer; margin-bottom:1px; }
         .ai-item:active { background:rgba(255,255,255,0.05); }
         .ai-item.active { background:rgba(124,58,237,0.25); }
         .ai-av { width:42px;height:42px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;overflow:hidden; }
@@ -42,29 +38,39 @@
         .u-av { width:30px;height:30px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:white; }
         .u-nm { font-weight:600;font-size:12px; }
         .u-rl { font-size:10px;color:var(--muted);text-transform:capitalize; }
-        .btns { display:flex;gap:4px; }
-        .btn-o { display:none;background:var(--acc);color:white;padding:5px 10px;border-radius:6px;text-decoration:none;font-size:10px;font-weight:600; }
-        .btn-x { background:transparent;border:1px solid rgba(239,68,68,0.4);color:var(--red);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:10px;font-weight:600;font-family:inherit; }
+        .btn-o { display:none;background:var(--acc);color:white;padding:5px 10px;border-radius:6px;text-decoration:none;font-size:10px; }
+        .btn-x { background:transparent;border:1px solid rgba(239,68,68,0.4);color:var(--red);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:10px; }
         
-        /* MAIN */
         .main { flex:1;display:flex;flex-direction:column;height:100%;background:var(--bg); }
         .header { height:54px;min-height:54px;padding:0 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:var(--sb); }
-        .ham { display:none;background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 6px; }
-        .h-inf { flex:1;min-width:0; }
+        .ham { display:none;background:none;border:none;color:var(--text);font-size:22px;cursor:pointer; }
+        .h-inf { flex:1; }
         .h-nm { font-weight:600;font-size:15px; }
-        .h-st { font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px; }
-        .dot { width:6px;height:6px;border-radius:50%;background:var(--green); }
+        .h-st { font-size:11px;color:var(--muted); }
+        .dot { width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;margin-right:4px; }
+        
+        /* MOOD */
+        .mood-wrap { position:relative; flex-shrink:0; }
+        .mood-btn { display:flex;align-items:center;gap:5px;background:var(--card);padding:6px 10px;border-radius:20px;cursor:pointer;user-select:none;font-size:12px;border:1px solid var(--border); }
+        .mood-e { font-size:18px; }
+        .mood-t { font-size:10px;color:var(--muted); }
+        .mood-dd { position:absolute;top:110%;right:0;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:4px;display:none;flex-direction:column;gap:2px;z-index:10;min-width:130px;box-shadow:0 8px 24px rgba(0,0,0,0.5); }
+        .mood-dd.show { display:flex; }
+        .mood-opt { display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:12px;white-space:nowrap;border:none;background:none;color:var(--text);font-family:inherit;text-align:left; }
+        .mood-opt:hover { background:rgba(124,58,237,0.15); }
+        .mood-opt.active { background:rgba(124,58,237,0.3);font-weight:600; }
+        
+        .rel-bar { height:3px;background:rgba(255,255,255,0.1);border-radius:2px;margin-top:2px;overflow:hidden; }
+        .rel-fill { height:100%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:2px;transition:width .5s; }
         
         .msgs { flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px; }
-        .welcome { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);text-align:center;padding:20px; }
+        .welcome { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);text-align:center; }
         .welcome span { font-size:56px;margin-bottom:10px; }
-        .welcome h2 { font-size:18px;color:var(--text);margin-bottom:4px; }
-        .welcome p { font-size:13px; }
         
         .msg { max-width:85%;padding:10px 14px;border-radius:16px;font-size:13px;line-height:1.4;word-wrap:break-word;animation:in .25s; }
         @keyframes in { from{opacity:0;transform:translateY(6px);} to{opacity:1;transform:translateY(0);} }
-        .msg.u { align-self:flex-end;background:linear-gradient(135deg,#7c3aed,#a855f7);color:white;border-bottom-right-radius:4px; }
-        .msg.a { align-self:flex-start;background:#1e1f2b;border:1px solid var(--border);border-bottom-left-radius:4px; }
+        .msg.u { align-self:flex-end;background:linear-gradient(135deg,#7c3aed,#a855f7);color:white; }
+        .msg.a { align-self:flex-start;background:#1e1f2b;border:1px solid var(--border); }
         .typing { align-self:flex-start;padding:10px 14px;display:flex;gap:3px; }
         .typing span { width:6px;height:6px;border-radius:50%;background:var(--muted);animation:bounce 1.4s infinite; }
         .typing span:nth-child(2) { animation-delay:.2s; }
@@ -73,23 +79,17 @@
         
         .limit { text-align:center;font-size:10px;color:var(--muted);padding:4px; }
         .inp-area { padding:10px 14px;border-top:1px solid var(--border);background:var(--sb); }
-        .inp-wrap { display:flex;gap:8px;align-items:flex-end; }
+        .inp-wrap { display:flex;gap:8px; }
         .inp-wrap textarea { flex:1;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:20px;color:var(--text);font-size:13px;resize:none;outline:none;max-height:80px;font-family:inherit; }
-        .inp-wrap textarea:focus { border-color:var(--acc); }
         .snd { width:38px;height:38px;border-radius:50%;background:var(--acc);border:none;color:white;font-size:16px;cursor:pointer;flex-shrink:0; }
-        .snd:active { transform:scale(.95); }
         .snd:disabled { opacity:.4; }
         
-        /* MODAL */
         .modal { position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:100; }
         .modal.hidden { display:none; }
         .modal-b { background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:90%;max-width:360px;text-align:center; }
-        .modal-b h3 { margin-bottom:6px;font-size:16px; }
-        .modal-b p { color:var(--muted);font-size:13px;margin-bottom:16px; }
-        .modal-b button { padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:13px;margin:3px;font-family:inherit; }
+        .modal-b button { padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:600; }
         .btn-p { background:var(--acc);color:white; }
         
-        /* TOAST */
         .toast { position:fixed;bottom:70px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:10px;color:white;font-weight:500;z-index:200;font-size:12px;animation:fadeUp .3s;pointer-events:none; }
         .toast.ok { background:var(--green); }
         .toast.err { background:var(--red); }
@@ -102,312 +102,251 @@
             .sidebar { position:fixed;transform:translateX(-100%); }
             .sidebar.open { transform:translateX(0);box-shadow:4px 0 20px rgba(0,0,0,0.5); }
             .ham { display:block; }
-            .msg { max-width:92%; }
+            .mood-t { display:none; }
         }
     </style>
 </head>
 <body>
     <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
     <div class="app">
-        <!-- SIDEBAR - AI CHARACTERS ONLY -->
+        <!-- SIDEBAR -->
         <aside class="sidebar" id="sidebar">
             <div class="sb-head">
-                <h3>🤖 AI Characters <button class="btn-refresh" onclick="refreshAIs()" title="Refresh">↻</button></h3>
-                <input type="text" id="searchInp" placeholder="Search AI..." oninput="filterAIs(this.value)">
+                <h3>🤖 AI Characters <button onclick="refreshAIs()" style="background:var(--acc);border:none;color:white;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;">↻</button></h3>
+                <input type="text" placeholder="Search AI..." oninput="filterAIs(this.value)">
             </div>
-            <div id="chatList"><div style="text-align:center;color:var(--muted);padding:20px;">Loading...</div></div>
+            <div class="sb-list" id="aiList"><div style="text-align:center;color:var(--muted);padding:20px;">Loading...</div></div>
             <div class="sb-foot">
                 <div class="u-inf">
                     <div class="u-av" id="uAv">U</div>
-                    <div><div class="u-nm" id="uName">User</div><div class="u-rl" id="uRole">user</div></div>
+                    <div><div class="u-nm" id="uNm">User</div><div class="u-rl" id="uRl">user</div></div>
                 </div>
-                <div class="btns">
+                <div>
                     <a href="/owner.html" class="btn-o" id="btnOwner">👑</a>
                     <button class="btn-x" onclick="logout()">Logout</button>
                 </div>
             </div>
         </aside>
         
-        <!-- MAIN CHAT -->
+        <!-- MAIN -->
         <main class="main">
-            <header class="header" id="chatHeader">
-                <button class="ham" id="hamburgerBtn" onclick="openSidebar()">☰</button>
+            <header class="header">
+                <button class="ham" onclick="openSidebar()">☰</button>
                 <div class="h-inf">
-                    <div class="h-nm" id="chatHeaderName">Select an AI</div>
-                    <div class="h-st" id="chatHeaderStatus"><span class="dot"></span> <span>Online</span></div>
+                    <div class="h-nm" id="hNm">Select an AI</div>
+                    <div class="h-st"><span class="dot"></span> <span id="hSt">Online</span></div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <div class="rel-bar" style="flex:1;max-width:100px;"><div class="rel-fill" id="relFill" style="width:0%;"></div></div>
+                        <span style="font-size:10px;color:var(--muted);" id="relText">0/100</span>
+                    </div>
                 </div>
-                <div id="aiSource" style="font-size:11px;color:#71717a;background:#1a1b23;padding:6px 12px;border-radius:20px;display:none;"></div>
+                
+                <!-- MOOD INDICATOR -->
+                <div class="mood-wrap">
+                    <div class="mood-btn" onclick="toggleMood()">
+                        <span class="mood-e" id="moodE">😐</span>
+                        <span class="mood-t" id="moodT">neutral</span>
+                        <span style="font-size:8px;">▾</span>
+                    </div>
+                    <div class="mood-dd" id="moodDD">
+                        <button class="mood-opt active" data-m="neutral" onclick="event.stopPropagation();changeMood('neutral')">😐 Neutral</button>
+                        <button class="mood-opt" data-m="happy" onclick="event.stopPropagation();changeMood('happy')">😊 Happy</button>
+                        <button class="mood-opt" data-m="clingy" onclick="event.stopPropagation();changeMood('clingy')">🥺 Clingy</button>
+                        <button class="mood-opt" data-m="annoyed" onclick="event.stopPropagation();changeMood('annoyed')">😤 Annoyed</button>
+                        <button class="mood-opt" data-m="sleepy" onclick="event.stopPropagation();changeMood('sleepy')">😴 Sleepy</button>
+                        <button class="mood-opt" data-m="caring" onclick="event.stopPropagation();changeMood('caring')">🤗 Caring</button>
+                    </div>
+                </div>
             </header>
-            
-            <div class="msgs" id="messagesContainer">
-                <div class="welcome" id="welcomeScreen"><span>💬</span><h2>Select an AI Character</h2><p>Choose from the sidebar to start chatting</p></div>
+            <div class="msgs" id="msgs">
+                <div class="welcome"><span>💬</span><h2 style="color:var(--text);margin-bottom:4px;">Select an AI Character</h2><p>Choose from the sidebar to start chatting</p></div>
             </div>
-            
-            <div class="limit" id="limitCounter">Messages: --/--</div>
-            
-            <div class="inp-area hidden" id="chatInputContainer">
+            <div class="limit" id="limit">Messages: --/--</div>
+            <div class="inp-area hidden" id="inpArea">
                 <div class="inp-wrap">
-                    <textarea id="chatInput" placeholder="Type a message... (Enter to send)" rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px';"></textarea>
-                    <button class="snd" id="sendBtn" onclick="sendMsg()">➤</button>
+                    <textarea id="chatInput" placeholder="Type a message..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px';"></textarea>
+                    <button class="snd" id="sndBtn" onclick="sendMsg()">➤</button>
                 </div>
             </div>
         </main>
     </div>
-    
-    <!-- LIMIT MODAL -->
+
+    <!-- Limit Modal -->
     <div class="modal hidden" id="limitModal">
         <div class="modal-b"><span style="font-size:40px;">✨</span><h3>Daily Limit Reached</h3><p>Come back tomorrow! 🌙</p><button class="btn-p" onclick="document.getElementById('limitModal').classList.add('hidden')">Got it</button></div>
     </div>
 
     <script>
-        // ==================== API HELPER ====================
-        const API = {
-            async get(url) { const r = await fetch(url); if (!r.ok) throw new Error(await r.text()); return r.json(); },
-            async post(url, body) { const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }); const d = await r.json(); if (!r.ok) throw new Error(d.error||'Error'); return d; }
-        };
+        // API
+        async function api(url, opt = {}) {
+            const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opt });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || 'Error');
+            return d;
+        }
         
-        // ==================== STATE ====================
+        const MOODS = { happy:'😊', neutral:'😐', clingy:'🥺', annoyed:'😤', sleepy:'😴', caring:'🤗' };
         let user = null, ai = null, ais = [], chatId = null, busy = false;
-        const LIMITS = { user:50, premium:200, owner:Infinity };
+        let mood = 'neutral', relLevel = 0;
         
-        // ==================== PERSISTENCE ====================
-        function save() { try { localStorage.setItem('lc', JSON.stringify({cid:chatId, mid:ai?.id, t:Date.now()})); } catch(e) {} }
-        function load() { try { const d = JSON.parse(localStorage.getItem('lc')); if (d && Date.now()-d.t < 864e5) return d; } catch(e) {} return null; }
-        function clr() { try { localStorage.removeItem('lc'); } catch(e) {} }
+        function saveLS() { try { localStorage.setItem('lc', JSON.stringify({cid:chatId, mid:ai?.id, mood, rel:relLevel, t:Date.now()})); } catch(e) {} }
+        function loadLS() { try { const d = JSON.parse(localStorage.getItem('lc')); if (d && Date.now()-d.t < 864e5) return d; } catch(e) {} return null; }
         
-        // ==================== SIDEBAR ====================
-        function openSidebar() {
-            document.getElementById('sidebar').classList.add('open');
-            document.getElementById('overlay').classList.add('on');
-            refreshAIs();
-        }
-        function closeSidebar() {
-            document.getElementById('sidebar').classList.remove('open');
-            document.getElementById('overlay').classList.remove('on');
-        }
-        
-        // ==================== TOAST ====================
-        function toast(m, t='inf') {
-            const e = document.createElement('div'); e.className = 'toast ' + (t==='error'?'err':t==='success'?'ok':'inf');
-            e.textContent = m; document.body.appendChild(e); setTimeout(() => e.remove(), 2500);
-        }
-        
-        // ==================== INIT ====================
+        // INIT
         (async () => {
             try {
-                const d = await API.get('/api/auth/me');
+                const d = await api('/api/auth/me');
                 user = d.user;
-                if (!user) { location.href = '/'; return; }
-                
                 document.getElementById('uAv').textContent = user.username[0].toUpperCase();
-                document.getElementById('uName').textContent = user.username;
-                document.getElementById('uRole').textContent = user.role;
+                document.getElementById('uNm').textContent = user.username;
+                document.getElementById('uRl').textContent = user.role;
                 if (user.role === 'owner') document.getElementById('btnOwner').style.display = 'block';
                 
                 await refreshAIs();
                 updLimit();
                 
-                // Restore last chat
-                const last = load();
+                const last = loadLS();
                 if (last?.mid) {
                     const a = ais.find(x => x.id === last.mid);
-                    if (a) { selectAI(a, last.cid); return; }
+                    if (a) { mood = last.mood || 'neutral'; relLevel = last.rel || 0; selectAI(a, last.cid); updMoodUI(); updRelUI(); return; }
                 }
                 if (ais.length) selectAI(ais[0]);
             } catch(e) { location.href = '/'; }
         })();
         
-        // Auto refresh AI list setiap 30 detik
         setInterval(refreshAIs, 30000);
         
-        // ==================== AI LIST ====================
+        // SIDEBAR
+        function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('on'); refreshAIs(); }
+        function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('on'); }
+        function toast(m, t='inf') { const e = document.createElement('div'); e.className = 'toast ' + (t==='error'?'err':t==='success'?'ok':'inf'); e.textContent = m; document.body.appendChild(e); setTimeout(() => e.remove(), 2500); }
+        
         async function refreshAIs() {
-            try {
-                const d = await API.get('/api/characters');
-                ais = d.characters || [];
-                console.log('✅ AI list refreshed:', ais.length, ais.map(c => c.name));
-                renderSidebar();
-            } catch(e) { console.error('Failed to load AIs:', e); }
+            try { const d = await api('/api/characters'); ais = d.characters || []; renderSidebar(); } catch(e) {}
         }
         
         function renderSidebar() {
-            const el = document.getElementById('chatList');
-            if (!el) { console.error('chatList not found!'); return; }
-            
-            if (!ais.length) {
-                el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;">No AI characters available</div>';
-                return;
-            }
-            
-            el.innerHTML = ais.map(a => {
-                const av = a.avatar_url?.startsWith('http') 
-                    ? `<img src="${a.avatar_url}" onerror="this.parentElement.textContent='🤖'" alt="">` 
-                    : (a.avatar_url || '🤖');
-                const active = a.id === ai?.id ? 'active' : '';
-                return `
-                <div class="ai-item ${active}" onclick="selectAIById('${a.id}')">
-                    <div class="ai-av">${av}</div>
-                    <div class="ai-inf">
-                        <div class="n">${a.name}</div>
-                        <div class="d">${a.description || a.status || 'Online'}</div>
-                        ${a.visibility === 'private' ? '<span class="ai-badge">🔒 Private</span>' : ''}
-                    </div>
-                </div>`;
-            }).join('');
+            const el = document.getElementById('aiList');
+            el.innerHTML = ais.map(a => `
+                <div class="ai-item ${ai?.id === a.id ? 'active' : ''}" onclick="selectAIById('${a.id}')">
+                    <div class="ai-av">${a.avatar_url?.startsWith('http') ? `<img src="${a.avatar_url}" onerror="this.parentElement.textContent='🤖'">` : (a.avatar_url || '🤖')}</div>
+                    <div class="ai-inf"><div class="n">${a.name}</div><div class="d">${a.description || a.status || 'Online'}</div>${a.visibility === 'private' ? '<span class="ai-badge">🔒 Private</span>' : ''}</div>
+                </div>
+            `).join('') || '<div style="text-align:center;color:var(--muted);padding:20px;">No AI found</div>';
         }
         
-        function filterAIs(query) {
-            const filtered = query ? ais.filter(a => a.name.toLowerCase().includes(query.toLowerCase())) : ais;
-            const el = document.getElementById('chatList');
-            if (!filtered.length) {
-                el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;">No AI found</div>';
-                return;
-            }
-            el.innerHTML = filtered.map(a => {
-                const av = a.avatar_url?.startsWith('http') 
-                    ? `<img src="${a.avatar_url}" onerror="this.parentElement.textContent='🤖'" alt="">` 
-                    : (a.avatar_url || '🤖');
-                return `
-                <div class="ai-item ${a.id===ai?.id?'active':''}" onclick="selectAIById('${a.id}')">
-                    <div class="ai-av">${av}</div>
-                    <div class="ai-inf">
-                        <div class="n">${a.name}</div>
-                        <div class="d">${a.description || a.status || 'Online'}</div>
-                        ${a.visibility==='private'?'<span class="ai-badge">🔒 Private</span>':''}
-                    </div>
-                </div>`;
-            }).join('');
+        function filterAIs(q) {
+            const filtered = q ? ais.filter(a => a.name.toLowerCase().includes(q.toLowerCase())) : ais;
+            const el = document.getElementById('aiList');
+            el.innerHTML = filtered.map(a => `
+                <div class="ai-item ${ai?.id === a.id ? 'active' : ''}" onclick="selectAIById('${a.id}')">
+                    <div class="ai-av">${a.avatar_url?.startsWith('http') ? `<img src="${a.avatar_url}" onerror="this.parentElement.textContent='🤖'">` : (a.avatar_url || '🤖')}</div>
+                    <div class="ai-inf"><div class="n">${a.name}</div><div class="d">${a.description || a.status || 'Online'}</div></div>
+                </div>
+            `).join('') || '<div style="text-align:center;color:var(--muted);padding:20px;">No AI found</div>';
         }
         
-        function selectAIById(id) {
-            const a = ais.find(x => x.id === id);
-            if (a) { selectAI(a); closeSidebar(); }
-        }
+        function selectAIById(id) { const a = ais.find(x => x.id === id); if (a) selectAI(a); closeSidebar(); }
         
-        // ==================== CHAT ====================
+        // MOOD
+        function updMoodUI() {
+            document.getElementById('moodE').textContent = MOODS[mood] || '😐';
+            document.getElementById('moodT').textContent = mood;
+            document.querySelectorAll('.mood-opt').forEach(o => o.classList.toggle('active', o.dataset.m === mood));
+        }
+        function toggleMood() { document.getElementById('moodDD').classList.toggle('show'); }
+        async function changeMood(m) {
+            mood = m; updMoodUI(); document.getElementById('moodDD').classList.remove('show');
+            if (chatId) { try { await api(`/api/chats/${chatId}/mood`, { method:'PUT', body: JSON.stringify({ mood: m }) }); } catch(e) {} }
+            saveLS();
+        }
+        function updRelUI() {
+            document.getElementById('relFill').style.width = relLevel + '%';
+            document.getElementById('relText').textContent = relLevel + '/100';
+        }
+        document.addEventListener('click', e => { if (!e.target.closest('.mood-wrap')) document.getElementById('moodDD').classList.remove('show'); });
+        
+        // CHAT
         async function selectAI(a, existingChatId) {
             ai = a;
-            document.getElementById('chatHeaderName').textContent = a.name;
-            document.getElementById('chatHeaderStatus').innerHTML = '<span class="dot"></span> <span>' + (a.status || 'Online') + '</span>';
-            document.getElementById('chatInputContainer').classList.remove('hidden');
-            document.getElementById('welcomeScreen').style.display = 'none';
-            document.getElementById('chatInput').disabled = false;
-            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('msgs').innerHTML = '';
+            document.getElementById('hNm').textContent = a.name;
+            document.getElementById('hSt').innerHTML = '<span class="dot"></span> ' + (a.status || 'Online');
+            document.getElementById('inpArea').classList.remove('hidden');
             
-            // Update sidebar active
-            document.querySelectorAll('#chatList .ai-item').forEach(el => el.classList.remove('active'));
-            const items = [...document.querySelectorAll('#chatList .ai-item')];
+            document.querySelectorAll('.ai-item').forEach(el => el.classList.remove('active'));
+            const items = [...document.querySelectorAll('.ai-item')];
             const idx = ais.indexOf(a);
             if (idx >= 0 && items[idx]) items[idx].classList.add('active');
             
-            try {
-                const chats = (await API.get('/api/chats')).chats || [];
-                const existing = existingChatId 
-                    ? chats.find(c => c.id === existingChatId) 
-                    : chats.find(c => c.character_id === a.id);
-                
-                if (existing) {
-                    chatId = existing.id;
-                    await loadMsgs();
-                } else {
-                    const d = await API.post('/api/chats', { character_id: a.id });
-                    chatId = d.chat?.id;
-                    document.getElementById('messagesContainer').innerHTML = '';
-                }
-            } catch(e) { console.error(e); }
+            mood = 'neutral'; relLevel = 0;
             
-            save();
+            try {
+                const chats = (await api('/api/chats')).chats || [];
+                let chat = existingChatId ? chats.find(c => c.id === existingChatId) : chats.find(c => c.character_id === a.id);
+                
+                if (chat) {
+                    chatId = chat.id;
+                    mood = chat.mood || 'neutral';
+                    relLevel = chat.relationship_level || 0;
+                } else {
+                    const d = await api('/api/chats', { method:'POST', body: JSON.stringify({ character_id: a.id }) });
+                    chatId = d.chat?.id;
+                }
+                
+                if (chatId) {
+                    const d = await api(`/api/chats/${chatId}/messages`);
+                    (d.messages || []).forEach(m => addBubble(m.role, m.content));
+                }
+                
+                updMoodUI(); updRelUI(); saveLS();
+            } catch(e) { console.error(e); }
             document.getElementById('chatInput').focus();
         }
         
-        async function loadMsgs() {
-            if (!chatId) return;
-            try {
-                const d = await API.get(`/api/chats/${chatId}/messages`);
-                const el = document.getElementById('messagesContainer');
-                el.innerHTML = '';
-                (d.messages || []).forEach(m => addBubble(m.role, m.content, false));
-                scrollBtm();
-            } catch(e) {}
-        }
-        
-        function addBubble(role, content, ani = true) {
+        function addBubble(role, content) {
             const d = document.createElement('div');
             d.className = 'msg ' + (role === 'user' ? 'u' : 'a');
             d.textContent = content;
-            if (!ani) d.style.animation = 'none';
-            document.getElementById('messagesContainer').appendChild(d);
-            scrollBtm();
+            document.getElementById('msgs').appendChild(d);
+            document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
         }
         
-        function scrollBtm() {
-            const c = document.getElementById('messagesContainer');
-            setTimeout(() => { c.scrollTop = c.scrollHeight; }, 50);
-        }
-        
-        function showTyping() {
-            const d = document.createElement('div'); d.className = 'typing'; d.id = 'typingIndicator';
-            d.innerHTML = '<span></span><span></span><span></span>';
-            document.getElementById('messagesContainer').appendChild(d);
-            scrollBtm();
-        }
-        function hideTyping() { document.getElementById('typingIndicator')?.remove(); }
-        
-        // ==================== SEND ====================
+        // SEND
         async function sendMsg() {
             if (busy || !chatId) return;
             const inp = document.getElementById('chatInput'), txt = inp.value.trim();
             if (!txt) return;
             
-            const limit = LIMITS[user.role] || 50;
-            if (limit !== Infinity && (user.daily_message_count || 0) >= limit) {
-                document.getElementById('limitModal').classList.remove('hidden');
-                return;
-            }
-            
-            busy = true;
-            document.getElementById('sendBtn').disabled = true;
+            busy = true; document.getElementById('sndBtn').disabled = true;
             inp.value = ''; inp.style.height = 'auto';
-            
             addBubble('user', txt);
-            showTyping();
+            
+            const typingEl = document.createElement('div'); typingEl.className = 'typing'; typingEl.id = 'typing';
+            typingEl.innerHTML = '<span></span><span></span><span></span>';
+            document.getElementById('msgs').appendChild(typingEl);
             
             try {
-                const d = await API.post(`/api/chats/${chatId}/messages`, { content: txt });
-                hideTyping();
-                
+                const d = await api(`/api/chats/${chatId}/messages`, { method:'POST', body: JSON.stringify({ content: txt }) });
+                document.getElementById('typing')?.remove();
                 if (d.aiMessage) addBubble('assistant', d.aiMessage.content);
-                if (d.aiSource) {
-                    document.getElementById('aiSource').textContent = '🤖 ' + d.aiSource;
-                    document.getElementById('aiSource').style.display = 'block';
-                }
-                if (d.remaining !== undefined) user.daily_message_count = limit - d.remaining;
-                
-                updLimit(); save();
+                if (d.relationshipLevel !== undefined) { relLevel = d.relationshipLevel; updRelUI(); }
+                updLimit(); saveLS();
             } catch(e) {
-                hideTyping();
+                document.getElementById('typing')?.remove();
                 if (e.message.includes('limit')) document.getElementById('limitModal').classList.remove('hidden');
                 else toast(e.message, 'error');
             }
             
-            busy = false;
-            document.getElementById('sendBtn').disabled = false;
+            busy = false; document.getElementById('sndBtn').disabled = false;
             inp.focus();
         }
         
         async function updLimit() {
-            try {
-                const d = await API.get('/api/user/stats');
-                const el = document.getElementById('limitCounter');
-                el.textContent = d.role === 'owner' ? 'Messages: Unlimited' : `Messages: ${d.remaining}/${d.dailyLimit}`;
-            } catch(e) {}
+            try { const d = await api('/api/user/stats'); document.getElementById('limit').textContent = d.role === 'owner' ? 'Unlimited' : `${d.remaining}/${d.dailyLimit}`; } catch(e) {}
         }
         
-        async function logout() {
-            clr();
-            await API.post('/api/auth/logout', {});
-            location.href = '/';
-        }
+        async function logout() { localStorage.removeItem('lc'); await api('/api/auth/logout', { method:'POST' }); location.href = '/'; }
     </script>
 </body>
 </html>
