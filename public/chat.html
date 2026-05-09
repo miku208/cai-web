@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0a0a0f">
+    <title>AI Chat</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        html, body { height: 100%; width: 100%; overflow: hidden; position: fixed; top: 0; left: 0; }
+        .app-container { height: 100vh; height: 100dvh; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">
+                    <span>💬 Chats</span>
+                    <button class="btn-icon" id="newChatBtn" title="New Chat">+</button>
+                </div>
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="search-input" id="searchAI" placeholder="Search AI characters...">
+                </div>
+            </div>
+            <nav class="sidebar-nav" id="aiList">
+                <div id="aiListSkeleton">
+                    <div class="ai-list-item">
+                        <div class="skeleton skeleton-avatar"></div>
+                        <div class="ai-info">
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text short"></div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <div>
+                        <div class="user-name" id="userName">User</div>
+                        <div class="user-role" id="userRole">user</div>
+                    </div>
+                </div>
+                <button class="logout-btn" id="logoutBtn">Logout</button>
+            </div>
+        </aside>
+
+        <main class="main-chat">
+            <header class="chat-header" id="chatHeader">
+                <button class="hamburger-btn" id="hamburgerBtn">☰</button>
+                <div class="chat-header-info">
+                    <div class="chat-header-name" id="chatHeaderName">Select an AI</div>
+                    <div class="chat-header-status" id="chatHeaderStatus">
+                        <span class="status-dot"></span> <span>Online</span>
+                    </div>
+                </div>
+                <div id="aiSource" style="font-size:11px;color:#71717a;background:#1a1b23;padding:6px 12px;border-radius:20px;display:none;"></div>
+            </header>
+            <div class="messages-container" id="messagesContainer">
+                <div class="welcome-screen" id="welcomeScreen">
+                    <div class="welcome-icon">🤖</div>
+                    <h2 class="welcome-title">Welcome to AI Chat</h2>
+                    <p class="welcome-subtitle">Select an AI from the sidebar to start.</p>
+                </div>
+            </div>
+            <div class="limit-counter" id="limitCounter">Messages remaining: --/--</div>
+            <div class="chat-input-container" id="chatInputContainer" style="display:none;">
+                <div class="input-wrapper">
+                    <textarea class="chat-input" id="chatInput" placeholder="Type a message... (Enter to send)" rows="1" disabled></textarea>
+                    <button class="send-btn" id="sendBtn" disabled>➤</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal-overlay hidden" id="limitModal">
+        <div class="modal-content">
+            <div class="modal-header"><div class="modal-icon">✨</div><h3 class="modal-title">Daily Limit Reached</h3></div>
+            <div class="modal-body"><p>Come back tomorrow! 🌙</p></div>
+            <div class="modal-footer"><button class="btn btn-primary" onclick="document.getElementById('limitModal').classList.add('hidden')">Got it</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay hidden" id="deleteModal">
+        <div class="modal-content">
+            <div class="modal-header"><div class="modal-icon">🗑️</div><h3 class="modal-title">Delete Chat?</h3></div>
+            <div class="modal-body"><p>This cannot be undone.</p></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="document.getElementById('deleteModal').classList.add('hidden')">Cancel</button>
+                <button class="btn btn-primary" id="confirmDeleteBtn" style="background:#ef4444;">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/config.js"></script>
+    <script src="/js/chat.js"></script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat - Login</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <!-- Login Form -->
+            <div id="loginForm">
+                <div class="auth-header">
+                    <div class="auth-logo">🤖</div>
+                    <h1 class="auth-title">Welcome Back</h1>
+                    <p class="auth-subtitle">Sign in to continue chatting</p>
+                </div>
+                <form id="loginFormElement">
+                    <div class="form-group">
+                        <label class="form-label">Username</label>
+                        <input 
+                            type="text" 
+                            class="form-input" 
+                            id="loginUsername" 
+                            placeholder="Enter your username"
+                            required
+                            autocomplete="username"
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input 
+                            type="password" 
+                            class="form-input" 
+                            id="loginPassword" 
+                            placeholder="Enter your password"
+                            required
+                            autocomplete="current-password"
+                        >
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="loginBtn">
+                        <span id="loginBtnText">Sign In</span>
+                        <span id="loginBtnLoader" class="hidden">
+                            <span class="typing-dots">
+                                <span class="typing-dot"></span>
+                                <span class="typing-dot"></span>
+                                <span class="typing-dot"></span>
+                            </span>
+                        </span>
+                    </button>
+                </form>
+                <div class="auth-toggle">
+                    Don't have an account? <a onclick="toggleForm('register')">Create one</a>
+                </div>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerForm" class="hidden">
+                <div class="auth-header">
+                    <div class="auth-logo">✨</div>
+                    <h1 class="auth-title">Create Account</h1>
+                    <p class="auth-subtitle">Join the AI conversation</p>
+                </div>
+                <form id="registerFormElement">
+                    <div class="form-group">
+                        <label class="form-label">Username</label>
+                        <input 
+                            type="text" 
+                            class="form-input" 
+                            id="registerUsername" 
+                            placeholder="Choose a username (min 3 chars)"
+                            required
+                            minlength="3"
+                            autocomplete="username"
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input 
+                            type="password" 
+                            class="form-input" 
+                            id="registerPassword" 
+                            placeholder="Create password (min 6 chars)"
+                            required
+                            minlength="6"
+                            autocomplete="new-password"
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Confirm Password</label>
+                        <input 
+                            type="password" 
+                            class="form-input" 
+                            id="registerConfirmPassword" 
+                            placeholder="Confirm your password"
+                            required
+                            minlength="6"
+                            autocomplete="new-password"
+                        >
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="registerBtn">
+                        <span id="registerBtnText">Create Account</span>
+                        <span id="registerBtnLoader" class="hidden">
+                            <span class="typing-dots">
+                                <span class="typing-dot"></span>
+                                <span class="typing-dot"></span>
+                                <span class="typing-dot"></span>
+                            </span>
+                        </span>
+                    </button>
+                </form>
+                <div class="auth-toggle">
+                    Already have an account? <a onclick="toggleForm('login')">Sign in</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/config.js"></script>
+    <script>
+        // ============================================
+        // AUTH PAGE SCRIPTS
+        // ============================================
+
+        // Check if already logged in
+        (async function init() {
+            const user = await checkAuth();
+            if (user) {
+                redirectBasedOnRole();
+            }
+        })();
+
+        // Toggle between login and register forms
+        function toggleForm(form) {
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            
+            if (form === 'register') {
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
+            } else {
+                registerForm.classList.add('hidden');
+                loginForm.classList.remove('hidden');
+            }
+        }
+
+        // Login handler
+        document.getElementById('loginFormElement').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const btn = document.getElementById('loginBtn');
+            const btnText = document.getElementById('loginBtnText');
+            const btnLoader = document.getElementById('loginBtnLoader');
+
+            if (!username || !password) {
+                Toast.show('Please fill in all fields', 'warning');
+                return;
+            }
+
+            // Show loading
+            btn.disabled = true;
+            btnText.classList.add('hidden');
+            btnLoader.classList.remove('hidden');
+
+            try {
+                const response = await api.post('/api/auth/login', { username, password });
+                Toast.show('Login successful! Redirecting...', 'success');
+                
+                setTimeout(() => {
+                    if (response.user.role === 'owner') {
+                        window.location.href = '/owner.html';
+                    } else {
+                        window.location.href = '/chat.html';
+                    }
+                }, 500);
+            } catch (error) {
+                Toast.show(error.message, 'error');
+                btn.disabled = false;
+                btnText.classList.remove('hidden');
+                btnLoader.classList.add('hidden');
+            }
+        });
+
+        // Register handler
+        document.getElementById('registerFormElement').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('registerUsername').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+            const btn = document.getElementById('registerBtn');
+            const btnText = document.getElementById('registerBtnText');
+            const btnLoader = document.getElementById('registerBtnLoader');
+
+            // Validation
+            if (username.length < 3) {
+                Toast.show('Username must be at least 3 characters', 'warning');
+                return;
+            }
+
+            if (password.length < 6) {
+                Toast.show('Password must be at least 6 characters', 'warning');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                Toast.show('Passwords do not match', 'error');
+                return;
+            }
+
+            // Show loading
+            btn.disabled = true;
+            btnText.classList.add('hidden');
+            btnLoader.classList.remove('hidden');
+
+            try {
+                const response = await api.post('/api/auth/register', { username, password });
+                Toast.show('Account created! Redirecting...', 'success');
+                
+                setTimeout(() => {
+                    window.location.href = '/chat.html';
+                }, 500);
+            } catch (error) {
+                Toast.show(error.message, 'error');
+                btn.disabled = false;
+                btnText.classList.remove('hidden');
+                btnLoader.classList.add('hidden');
+            }
+        });
+
+        // Enter key support for forms
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const activeForm = document.querySelector('form:not(.hidden)');
+                if (activeForm) {
+                    activeForm.dispatchEvent(new Event('submit'));
+                }
+            }
+        });
+    </script>
+</body>
+</html>
