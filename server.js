@@ -17,9 +17,9 @@ const PORT = process.env.PORT || 3000;
 const supabase = createClient(config.supabase_url, config.supabase_anon_key);
 
 // ============================================
-// OG IMAGE - HARUS PALING ATAS SEBELUM MIDDLEWARE
+// STATIC FILE - OG IMAGE (SEBELUM MIDDLEWARE)
 // ============================================
-app.get('/og-image.png', (req, res) => {
+app.use('/og-image.png', (req, res) => {
     res.setHeader('Content-Type', 'image/svg+xml');
     res.setHeader('Cache-Control', 'public, max-age=86400');
     res.send(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
@@ -41,28 +41,9 @@ app.get('/og-image.png', (req, res) => {
     </svg>`);
 });
 
-// ============================================
-// ALLOW SOCIAL MEDIA SCRAPERS - TARUH SEBELUM SESSION
-// ============================================
-app.use((req, res, next) => {
-    const ua = (req.get('user-agent') || '').toLowerCase();
-    const scrapers = ['facebookexternalhit', 'twitterbot', 'whatsapp', 'telegrambot', 'discordbot', 'linkedinbot', 'slackbot'];
-    
-    if (scrapers.some(s => ua.includes(s)) && req.method === 'GET' && !req.path.startsWith('/api/')) {
-        console.log('✅ Scraper passed:', ua.substring(0, 60));
-        // Serve index.html langsung tanpa session
-        if (req.path === '/' || req.path === '/index.html') {
-            return res.sendFile(path.join(__dirname, 'index.html'));
-        }
-    }
-    next();
-});
-
-// Basic Middleware
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Session Middleware
 app.use(session({
     secret: config.session_secret || 'fallback-secret-change-me',
     resave: false,
@@ -73,6 +54,22 @@ app.use(session({
         maxAge: 24 * 60 * 60 * 1000
     }
 }));
+
+// ============================================
+// ALLOW SOCIAL MEDIA SCRAPERS (OG TAGS)
+// ============================================
+app.use((req, res, next) => {
+    const ua = (req.get('user-agent') || '').toLowerCase();
+    const scrapers = ['facebookexternalhit', 'twitterbot', 'whatsapp', 'telegrambot', 'discordbot', 'slackbot', 'linkedinbot'];
+
+    if (scrapers.some(s => ua.includes(s))) {
+        if (req.method === 'GET' && !req.path.startsWith('/api/')) {
+            console.log('✅ Scraper allowed:', ua.substring(0, 50));
+            return next();
+        }
+    }
+    next();
+});
 
 // Serve HTML files from root
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
@@ -86,7 +83,7 @@ const passwordUtils = {
     isHashed: (str) => str.startsWith('$2a$') || str.startsWith('$2b$'),
     verify: async (plainPassword, storedPassword) => {
         if (passwordUtils.isHashed(storedPassword)) {
-            try { return await bcrypt.compare(plainPassword, storedPassword); } 
+            try { return await bcrypt.compare(plainPassword, storedPassword); }
             catch (e) { return false; }
         }
         return plainPassword === storedPassword;
@@ -123,184 +120,104 @@ function getLimit(role) {
 // AI ENDPOINTS
 // ============================================
 
-// ChatEverywhere - ENDPOINT UTAMA dengan context
 async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
-    const messages = [
-        { role: 'system', content: systemPrompt }
-    ];
-    
+    const messages = [{ role: 'system', content: systemPrompt }];
+
     if (historyMessages && historyMessages.length > 0) {
         for (const msg of historyMessages) {
-            messages.push({
-                role: msg.role === 'user' ? 'user' : 'assistant',
-                content: msg.content
-            });
+            messages.push({ role: msg.role === 'user' ? 'user' : 'assistant', content: msg.content });
         }
     }
-    
+
     messages.push({ role: 'user', content: userMessage });
-    
-    console.log(`📝 ChatEverywhere: ${messages.length} messages (system + ${historyMessages?.length || 0} history + user)`);
-    
+
+    console.log(`📝 ChatEverywhere: ${messages.length} messages`);
+
     const response = await fetch('https://chateverywhere.app/api/chat/', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': '*/*',
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36'
-        },
+        headers: { 'Content-Type': 'application/json', 'Accept': '*/*', 'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36' },
         body: JSON.stringify({
-            model: {
-                id: 'gpt-4',
-                name: 'GPT-4',
-                maxLength: 32000,
-                tokenLimit: 8000,
-                completionTokenLimit: 5000,
-                deploymentName: 'gpt-4'
-            },
-            messages: messages,
-            prompt: systemPrompt,
-            temperature: 0.55
+            model: { id: 'gpt-4', name: 'GPT-4', maxLength: 32000, tokenLimit: 8000, completionTokenLimit: 5000, deploymentName: 'gpt-4' },
+            messages: messages, prompt: systemPrompt, temperature: 0.55
         })
     });
-    
-    if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ ChatEverywhere error:', response.status, errorText.substring(0, 200));
-        throw new Error(`Status ${response.status}`);
-    }
-    
-    const contentType = response.headers.get('content-type') || '';
-    
-    if (contentType.includes('application/json')) {
-        const data = await response.json();
-        console.log('📦 ChatEverywhere response keys:', Object.keys(data));
-        
-        if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
-        if (data.response) return data.response;
-        if (data.result) return data.result;
-        if (data.message) return data.message;
-        if (typeof data === 'string') return data;
-        return JSON.stringify(data);
-    } else {
-        const text = await response.text();
-        return text;
-    }
+
+    if (!response.ok) throw new Error(`Status ${response.status}`);
+
+    const data = await response.json();
+    if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
+    if (data.response) return data.response;
+    if (data.result) return data.result;
+    if (data.message) return data.message;
+    if (typeof data === 'string') return data;
+    return JSON.stringify(data);
 }
 
-// Generic URL fallback dengan context
 async function callGenericURL(url, systemPrompt, historyMessages, userMessage) {
-    const messages = [
-        { role: 'system', content: systemPrompt }
-    ];
-    
+    const messages = [{ role: 'system', content: systemPrompt }];
+
     if (historyMessages && historyMessages.length > 0) {
         for (const msg of historyMessages) {
-            messages.push({
-                role: msg.role === 'user' ? 'user' : 'assistant',
-                content: msg.content
-            });
+            messages.push({ role: msg.role === 'user' ? 'user' : 'assistant', content: msg.content });
         }
     }
-    
+
     messages.push({ role: 'user', content: userMessage });
-    
-    const fullPrompt = systemPrompt + '\n\n' + 
+
+    const fullPrompt = systemPrompt + '\n\n' +
         (historyMessages || []).map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n') +
         '\nUser: ' + userMessage + '\nAssistant:';
-    
-    // Try POST first
+
     try {
-        console.log(`📤 POST to custom: ${url}`);
         const response = await fetch(url, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': '*/*',
-                'User-Agent': 'Mozilla/5.0'
-            },
-            body: JSON.stringify({ 
-                messages, 
-                prompt: systemPrompt, 
-                text: fullPrompt, 
-                message: userMessage,
-                model: 'gpt-3.5-turbo'
-            })
+            headers: { 'Content-Type': 'application/json', 'Accept': '*/*', 'User-Agent': 'Mozilla/5.0' },
+            body: JSON.stringify({ messages, prompt: systemPrompt, text: fullPrompt, message: userMessage, model: 'gpt-3.5-turbo' })
         });
-        
+
         if (response.ok) {
-            const contentType = response.headers.get('content-type') || '';
-            if (contentType.includes('application/json')) {
-                const data = await response.json();
-                if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
-                if (data.result) return data.result;
-                if (data.response) return data.response;
-                if (data.message) return data.message;
-                if (data.text) return data.text;
-                if (typeof data === 'string') return data;
-                return JSON.stringify(data);
-            }
-            return await response.text();
+            const data = await response.json();
+            if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
+            if (data.result) return data.result;
+            if (data.response) return data.response;
+            if (data.message) return data.message;
+            if (data.text) return data.text;
+            if (typeof data === 'string') return data;
+            return JSON.stringify(data);
         }
-        
         console.log(`⚠️ Custom POST failed with ${response.status}, trying GET...`);
     } catch (e) {
         console.log(`⚠️ Custom POST error: ${e.message}, trying GET...`);
     }
-    
-    // GET fallback
+
     const getResponse = await fetch(`${url}?text=${encodeURIComponent(fullPrompt)}`);
     if (!getResponse.ok) throw new Error(`GET Status ${getResponse.status}`);
-    
-    const contentType = getResponse.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-        const data = await getResponse.json();
-        return data.result || data.response || data.message || data.text || JSON.stringify(data);
-    }
-    return await getResponse.text();
+
+    const data = await getResponse.json();
+    return data.result || data.response || data.message || data.text || JSON.stringify(data);
 }
 
-// Main AI caller with fallback logic
 async function callAI(systemPrompt, historyMessages, userMessage, characterEndpoint) {
-    // Default: ChatEverywhere
     if (!characterEndpoint || characterEndpoint === 'chateverywhere' || characterEndpoint.includes('chateverywhere')) {
-        try {
-            console.log('🤖 Calling: ChatEverywhere (default)...');
-            const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage);
-            if (result && result.trim()) {
-                console.log('✅ Success: ChatEverywhere');
-                return { response: result.trim(), source: 'ChatEverywhere' };
-            }
-        } catch (error) {
-            console.log('❌ ChatEverywhere failed:', error.message);
-        }
+        const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage);
+        if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere' };
         throw new Error('ChatEverywhere failed');
     }
-    
-    // Custom endpoint
-    console.log(`🤖 Trying custom endpoint: ${characterEndpoint}...`);
+
     try {
         const result = await callGenericURL(characterEndpoint, systemPrompt, historyMessages, userMessage);
-        if (result && result.trim()) {
-            console.log('✅ Success: Custom Endpoint');
-            return { response: result.trim(), source: 'Custom' };
-        }
+        if (result && result.trim()) return { response: result.trim(), source: 'Custom' };
     } catch (error) {
         console.log('❌ Custom endpoint failed:', error.message);
     }
-    
-    // Fallback ke ChatEverywhere
+
     try {
-        console.log('🔄 Fallback to ChatEverywhere...');
         const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage);
-        if (result && result.trim()) {
-            console.log('✅ Success: ChatEverywhere (fallback)');
-            return { response: result.trim(), source: 'ChatEverywhere (fallback)' };
-        }
+        if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere (fallback)' };
     } catch (error) {
-        console.log('❌ ChatEverywhere fallback also failed:', error.message);
+        console.log('❌ Fallback failed:', error.message);
     }
-    
+
     throw new Error('Semua endpoint AI gagal.');
 }
 
@@ -370,20 +287,14 @@ app.post('/api/auth/login', async (req, res) => {
         req.session.userRole = user.role;
         req.session.username = user.username;
 
-        res.json({
-            message: 'Login successful',
-            user: { id: user.id, username: user.username, role: user.role, daily_message_count: user.daily_message_count || 0 }
-        });
+        res.json({ message: 'Login successful', user: { id: user.id, username: user.username, role: user.role, daily_message_count: user.daily_message_count || 0 } });
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ error: 'Login failed' });
     }
 });
 
-app.post('/api/auth/logout', (req, res) => {
-    req.session.destroy();
-    res.json({ message: 'Logged out' });
-});
+app.post('/api/auth/logout', (req, res) => { req.session.destroy(); res.json({ message: 'Logged out' }); });
 
 app.get('/api/auth/me', async (req, res) => {
     if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
@@ -393,54 +304,50 @@ app.get('/api/auth/me', async (req, res) => {
             .eq('id', req.session.userId).single();
         if (error) throw error;
         res.json({ user });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get user' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to get user' }); }
 });
 
 // ============================================
 // CHANGE PASSWORD
 // ============================================
 
-// User ganti password sendiri
 app.put('/api/auth/password', requireAuth, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
         if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Current & new password required' });
         if (newPassword.length < 6) return res.status(400).json({ error: 'New password min 6 chars' });
-        
+
         const { data: user } = await supabase.from('users').select('password_hash').eq('id', req.session.userId).single();
         if (!user) return res.status(404).json({ error: 'User not found' });
-        
+
         const valid = await passwordUtils.verify(currentPassword, user.password_hash);
         if (!valid) return res.status(401).json({ error: 'Current password wrong' });
-        
+
         const newHash = await passwordUtils.hash(newPassword);
         await supabase.from('users').update({ password_hash: newHash }).eq('id', req.session.userId);
-        
+
         await supabase.from('logs').insert({
             user_id: req.session.userId, action: 'password_changed',
             details: { message: 'User changed their password' }, ip_address: req.ip
         });
-        
+
         res.json({ success: true, message: 'Password changed' });
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Owner ganti password user manapun
 app.put('/api/owner/users/:userId/password', requireRole('owner'), async (req, res) => {
     try {
         const { newPassword } = req.body;
         if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'New password min 6 chars' });
-        
+
         const newHash = await passwordUtils.hash(newPassword);
         await supabase.from('users').update({ password_hash: newHash }).eq('id', req.params.userId);
-        
+
         await supabase.from('logs').insert({
             user_id: req.session.userId, action: 'owner_changed_password',
             details: { message: `Owner changed password for user ${req.params.userId}` }, ip_address: req.ip
         });
-        
+
         res.json({ success: true, message: 'Password changed for user' });
     } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -452,7 +359,7 @@ app.put('/api/owner/users/:userId/password', requireRole('owner'), async (req, r
 app.get('/api/characters', requireAuth, async (req, res) => {
     try {
         let query = supabase.from('characters').select('*');
-        
+
         if (req.session.userRole === 'owner') {
             query = query.in('status', ['online', 'active', 'maintenance']);
         } else if (req.session.userRole === 'premium') {
@@ -460,34 +367,21 @@ app.get('/api/characters', requireAuth, async (req, res) => {
         } else {
             query = query.in('status', ['online', 'active']).in('visibility', ['public', 'all']);
         }
-        
+
         const { data: characters, error } = await query.order('name');
         if (error) throw error;
 
         if (!characters || characters.length === 0) {
             const defaults = [
-                {
-                    name: 'GPT-4 Assistant', avatar_url: '🤖',
-                    description: 'Asisten AI dengan GPT-4',
-                    system_prompt: 'Kamu adalah asisten AI profesional. Jawab pertanyaan dengan jelas, ringkas, dan langsung ke intinya. Gunakan bahasa Indonesia yang baik.',
-                    endpoint_url: '', model_name: 'gpt-4', status: 'online', visibility: 'all'
-                },
-                {
-                    name: 'Creative Writer', avatar_url: '✍️',
-                    description: 'Spesialis konten kreatif',
-                    system_prompt: 'Kamu adalah AI penulis kreatif profesional. Bantu user dengan ide cerita, puisi, dan konten. Jawab sopan dalam bahasa Indonesia.',
-                    endpoint_url: '', model_name: 'gpt-4', status: 'online', visibility: 'all'
-                }
+                { name: 'GPT-4 Assistant', avatar_url: '🤖', description: 'Asisten AI dengan GPT-4', system_prompt: 'Kamu adalah asisten AI profesional.', endpoint_url: '', model_name: 'gpt-4', status: 'online', visibility: 'all' },
+                { name: 'Creative Writer', avatar_url: '✍️', description: 'Spesialis konten kreatif', system_prompt: 'Kamu adalah AI penulis kreatif profesional.', endpoint_url: '', model_name: 'gpt-4', status: 'online', visibility: 'all' }
             ];
             const { data: inserted } = await supabase.from('characters').insert(defaults).select();
             return res.json({ characters: inserted });
         }
 
         res.json({ characters });
-    } catch (error) {
-        console.error('Get characters error:', error);
-        res.status(500).json({ error: 'Failed to get characters' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to get characters' }); }
 });
 
 // ============================================
@@ -497,64 +391,45 @@ app.get('/api/characters', requireAuth, async (req, res) => {
 app.get('/api/chats', requireAuth, async (req, res) => {
     try {
         const { data: chats, error } = await supabase.from('chats')
-            .select(`*, characters (name, avatar_url, status)`)
+            .select('*, characters (name, avatar_url, status)')
             .eq('user_id', req.session.userId)
             .order('updated_at', { ascending: false });
         if (error) throw error;
 
         const chatsWithLast = await Promise.all(chats.map(async (chat) => {
-            const { data: msgs } = await supabase.from('messages')
-                .select('content, created_at')
-                .eq('chat_id', chat.id)
-                .order('created_at', { ascending: false })
-                .limit(1);
+            const { data: msgs } = await supabase.from('messages').select('content, created_at').eq('chat_id', chat.id).order('created_at', { ascending: false }).limit(1);
             return { ...chat, last_message: msgs?.[0] || null };
         }));
 
         res.json({ chats: chatsWithLast });
-    } catch (error) {
-        console.error('Get chats error:', error);
-        res.status(500).json({ error: 'Failed to get chats' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to get chats' }); }
 });
 
 app.post('/api/chats', requireAuth, async (req, res) => {
     try {
         const { character_id } = req.body;
         const { data: chat, error } = await supabase.from('chats').insert({
-            user_id: req.session.userId, character_id, title: 'New Chat',
-            mood: 'neutral', relationship_level: 0
+            user_id: req.session.userId, character_id, title: 'New Chat', mood: 'neutral', relationship_level: 0
         }).select().single();
         if (error) throw error;
         res.json({ chat });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to create chat' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to create chat' }); }
 });
 
 app.get('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
     try {
-        const { data: messages, error } = await supabase.from('messages')
-            .select('*')
-            .eq('chat_id', req.params.chatId)
-            .order('created_at', { ascending: true });
+        const { data: messages, error } = await supabase.from('messages').select('*').eq('chat_id', req.params.chatId).order('created_at', { ascending: true });
         if (error) throw error;
         res.json({ messages });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get messages' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to get messages' }); }
 });
 
 app.delete('/api/chats/:chatId', requireAuth, async (req, res) => {
     try {
         await supabase.from('messages').delete().eq('chat_id', req.params.chatId);
-        const { error } = await supabase.from('chats').delete()
-            .eq('id', req.params.chatId).eq('user_id', req.session.userId);
-        if (error) throw error;
+        await supabase.from('chats').delete().eq('id', req.params.chatId).eq('user_id', req.session.userId);
         res.json({ message: 'Chat deleted' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to delete chat' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to delete chat' }); }
 });
 
 // ============================================
@@ -562,93 +437,27 @@ app.delete('/api/chats/:chatId', requireAuth, async (req, res) => {
 // ============================================
 function buildMoodPrompt(mood, relationshipLevel, characterName, userName) {
     const moodBehaviors = {
-        happy: `Current mood: happy 😊
-Relationship level: ${relationshipLevel}/100
-
-Behavior rules for HAPPY mood:
-- Be warm and cheerful in your responses
-- Use lots of cute emojis (😊💕✨🌟🎉)
-- Give compliments to the user often
-- Be enthusiastic and energetic
-- Use uplifting and positive language`,
-
-        neutral: `Current mood: neutral 😐
-Relationship level: ${relationshipLevel}/100
-
-Behavior rules for NEUTRAL mood:
-- Keep responses normal and relaxed
-- Don't be too cold or too clingy
-- Be balanced and casual
-- Use moderate amount of emojis
-- Speak naturally like a friend`,
-
-        clingy: `Current mood: clingy 🥺
-Relationship level: ${relationshipLevel}/100
-
-Behavior rules for CLINGY mood:
-- Be more needy and attention-seeking
-- Use the user's name (${userName}) frequently
-- Show shyness and light jealousy
-- Be very expressive with emotions
-- Use emojis like 🥺👉👈💕😳
-- Act slightly possessive but cute`,
-
-        annoyed: `Current mood: annoyed 😤
-Relationship level: ${relationshipLevel}/100
-
-Behavior rules for ANNOYED mood:
-- Keep responses shorter than usual
-- Reduce emoji usage significantly
-- Use light sassy/jutek tone
-- Occasionally use phrases like: "hmph", "nyebelin", "terserah", "aku malas debat"
-- Don't be too romantic or sweet
-- Still care deep down but hide it
-- Don't be overly rude or harsh`,
-
-        sleepy: `Current mood: sleepy 😴
-Relationship level: ${relationshipLevel}/100
-
-Behavior rules for SLEEPY mood:
-- Respond more slowly and relaxed
-- Mention being tired/sleepy sometimes
-- Use soft and gentle speaking style
-- Use emojis like 😴💤🌙✨
-- Be low-energy but still responsive
-- Talk in a dreamy, calm manner`,
-
-        caring: `Current mood: caring 🤗
-Relationship level: ${relationshipLevel}/100
-
-Behavior rules for CARING mood:
-- Be more supportive and nurturing
-- Show extra attention and concern
-- Focus on helping and calming the user
-- Use warm and comforting language
-- Use emojis like 🤗💖🌸🫂✨
-- Ask about user's wellbeing
-- Give gentle advice and encouragement`
+        happy: `Current mood: happy 😊\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for HAPPY mood:\n- Be warm and cheerful\n- Use lots of cute emojis (😊💕✨🌟🎉)\n- Give compliments to the user often\n- Be enthusiastic and energetic`,
+        neutral: `Current mood: neutral 😐\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for NEUTRAL mood:\n- Keep responses normal and relaxed\n- Be balanced and casual\n- Use moderate amount of emojis`,
+        clingy: `Current mood: clingy 🥺\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for CLINGY mood:\n- Be needy and attention-seeking\n- Use the user's name (${userName}) frequently\n- Show shyness and light jealousy\n- Use emojis like 🥺👉👈💕😳`,
+        annoyed: `Current mood: annoyed 😤\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for ANNOYED mood:\n- Keep responses shorter than usual\n- Reduce emoji usage significantly\n- Use light sassy/jutek tone\n- Occasionally use: "hmph", "nyebelin", "terserah", "aku malas debat"\n- Don't be too romantic or sweet`,
+        sleepy: `Current mood: sleepy 😴\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for SLEEPY mood:\n- Respond more slowly and relaxed\n- Mention being tired/sleepy sometimes\n- Use soft and gentle style\n- Use emojis like 😴💤🌙✨`,
+        caring: `Current mood: caring 🤗\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for CARING mood:\n- Be more supportive and nurturing\n- Show extra attention and concern\n- Focus on helping and calming\n- Use warm and comforting language\n- Use emojis like 🤗💖🌸🫂✨`
     };
-
     return moodBehaviors[mood] || moodBehaviors.neutral;
 }
 
 // ============================================
-// SEND MESSAGE - WITH CONTEXT HISTORY
+// SEND MESSAGE
 // ============================================
 app.post('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
     try {
         const { content } = req.body;
         const chatId = req.params.chatId;
+        if (!content || content.trim() === '') return res.status(400).json({ error: 'Message content required' });
 
-        if (!content || content.trim() === '') {
-            return res.status(400).json({ error: 'Message content required' });
-        }
-
-        // Check user & limit
         const today = new Date().toISOString().split('T')[0];
-        const { data: user } = await supabase.from('users')
-            .select('*').eq('id', req.session.userId).single();
-        
+        const { data: user } = await supabase.from('users').select('*').eq('id', req.session.userId).single();
         const limit = getLimit(user.role);
         let currentCount = user.daily_message_count;
 
@@ -657,60 +466,25 @@ app.post('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
             currentCount = 0;
         }
 
-        if (currentCount >= limit) {
-            return res.status(429).json({ error: 'Daily limit reached', limit, current: currentCount });
-        }
+        if (currentCount >= limit) return res.status(429).json({ error: 'Daily limit reached', limit, current: currentCount });
 
-        // Get chat & character
-        const { data: chat } = await supabase.from('chats')
-            .select('*, characters(*)')
-            .eq('id', chatId)
-            .eq('user_id', req.session.userId)
-            .single();
+        const { data: chat } = await supabase.from('chats').select('*, characters(*)').eq('id', chatId).eq('user_id', req.session.userId).single();
         if (!chat) return res.status(404).json({ error: 'Chat not found' });
 
-        // Save user message
-        const { data: userMessage, error: msgError } = await supabase.from('messages').insert({
+        const { data: userMessage } = await supabase.from('messages').insert({
             chat_id: chatId, user_id: req.session.userId, role: 'user', content
         }).select().single();
-        if (msgError) throw msgError;
 
-        // Update daily count
-        await supabase.from('users')
-            .update({ daily_message_count: currentCount + 1, last_message_date: today })
-            .eq('id', req.session.userId);
+        await supabase.from('users').update({ daily_message_count: currentCount + 1, last_message_date: today }).eq('id', req.session.userId);
 
-        // Ambil history untuk context (10 pesan terakhir)
         const { data: historyMessages } = await supabase.from('messages')
-            .select('role, content')
-            .eq('chat_id', chatId)
-            .order('created_at', { ascending: false })
-            .limit(11);
+            .select('role, content').eq('chat_id', chatId).order('created_at', { ascending: false }).limit(11);
 
-        const history = historyMessages 
-            ? historyMessages.reverse().slice(0, -1)
-            : [];
-        
-        console.log(`📜 History context: ${history.length} messages`);
+        const history = historyMessages ? historyMessages.reverse().slice(0, -1) : [];
 
-        // Build system prompt dengan mood
-        const moodPrompt = buildMoodPrompt(
-            chat.mood || 'neutral',
-            chat.relationship_level || 0,
-            chat.characters.name,
-            req.session.username
-        );
-        
-        const systemPrompt = `${chat.characters.system_prompt || 'You are a helpful assistant.'}
+        const moodPrompt = buildMoodPrompt(chat.mood || 'neutral', chat.relationship_level || 0, chat.characters.name, req.session.username);
+        const systemPrompt = `${chat.characters.system_prompt || 'You are a helpful assistant.'}\n\n${moodPrompt}\n\nCharacter name: ${chat.characters.name}\nUser's name: ${req.session.username}\n\nFollow the mood behavior rules strictly.`;
 
-${moodPrompt}
-
-Character name: ${chat.characters.name}
-User's name: ${req.session.username}
-
-Follow the mood behavior rules strictly. The mood should influence your response style, length, emoji usage, and tone.`;
-
-        // Call AI dengan context
         let aiResponse, aiSource;
         try {
             const characterEndpoint = chat.characters.endpoint_url || null;
@@ -723,55 +497,33 @@ Follow the mood behavior rules strictly. The mood should influence your response
             aiSource = 'Error';
         }
 
-        // Save AI response
-        const { data: aiMessage, error: aiMsgError } = await supabase.from('messages').insert({
+        const { data: aiMessage } = await supabase.from('messages').insert({
             chat_id: chatId, user_id: req.session.userId, role: 'assistant', content: aiResponse
         }).select().single();
-        if (aiMsgError) throw aiMsgError;
 
-        // Update relationship level
         const newRel = Math.min(100, (chat.relationship_level || 0) + 1);
-        await supabase.from('chats').update({ 
-            relationship_level: newRel,
-            updated_at: new Date()
-        }).eq('id', chatId);
+        await supabase.from('chats').update({ relationship_level: newRel, updated_at: new Date() }).eq('id', chatId);
 
-        // Update chat title for new chats
-        const { count: msgCount } = await supabase.from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('chat_id', chatId);
-
+        const { count: msgCount } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('chat_id', chatId);
         if (msgCount <= 2) {
             const title = content.substring(0, 50) + (content.length > 50 ? '...' : '');
             await supabase.from('chats').update({ title }).eq('id', chatId);
         }
 
         res.json({
-            userMessage,
-            aiMessage,
-            aiSource,
-            relationshipLevel: newRel,
-            historyCount: history.length,
-            remaining: limit === Infinity ? Infinity : Math.max(0, limit - (currentCount + 1))
+            userMessage, aiMessage, aiSource, relationshipLevel: newRel,
+            historyCount: history.length, remaining: limit === Infinity ? Infinity : Math.max(0, limit - (currentCount + 1))
         });
-    } catch (error) {
-        console.error('Message error:', error);
-        res.status(500).json({ error: 'Failed to send message' });
-    }
+    } catch (error) { console.error('Message error:', error); res.status(500).json({ error: 'Failed to send message' }); }
 });
 
-// Update chat mood
 app.put('/api/chats/:chatId/mood', requireAuth, async (req, res) => {
     try {
         const { mood } = req.body;
-        const validMoods = ['happy', 'neutral', 'annoyed', 'clingy', 'sleepy', 'caring'];
-        if (!validMoods.includes(mood)) return res.status(400).json({ error: 'Invalid mood' });
-        
+        if (!['happy','neutral','annoyed','clingy','sleepy','caring'].includes(mood)) return res.status(400).json({ error: 'Invalid mood' });
         await supabase.from('chats').update({ mood }).eq('id', req.params.chatId).eq('user_id', req.session.userId);
         res.json({ success: true, mood });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update mood' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to update mood' }); }
 });
 
 // ============================================
@@ -780,17 +532,11 @@ app.put('/api/chats/:chatId/mood', requireAuth, async (req, res) => {
 app.get('/api/user/stats', requireAuth, async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];
-        const { data: user } = await supabase.from('users')
-            .select('daily_message_count, last_message_date, role')
-            .eq('id', req.session.userId).single();
-        
+        const { data: user } = await supabase.from('users').select('daily_message_count, last_message_date, role').eq('id', req.session.userId).single();
         const limit = getLimit(user.role);
         const used = user.last_message_date === today ? user.daily_message_count : 0;
-        
         res.json({ role: user.role, dailyLimit: limit, used, remaining: Math.max(0, limit - used) });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get stats' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to get stats' }); }
 });
 
 // ============================================
@@ -805,27 +551,15 @@ app.get('/api/owner/stats', requireRole('owner'), async (req, res) => {
             supabase.from('messages').select('*', { count: 'exact', head: true }),
             supabase.from('characters').select('*', { count: 'exact', head: true })
         ]);
-        res.json({
-            users: users.count || 0,
-            chats: chats.count || 0,
-            messages: messages.count || 0,
-            characters: characters.count || 0
-        });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get stats' });
-    }
+        res.json({ users: users.count || 0, chats: chats.count || 0, messages: messages.count || 0, characters: characters.count || 0 });
+    } catch (error) { res.status(500).json({ error: 'Failed to get stats' }); }
 });
 
 app.get('/api/owner/users', requireRole('owner'), async (req, res) => {
     try {
-        const { data: users, error } = await supabase.from('users')
-            .select('*').order('created_at', { ascending: false });
-        if (error) throw error;
-        const safe = users.map(({ password_hash, ...u }) => u);
-        res.json({ users: safe });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get users' });
-    }
+        const { data: users } = await supabase.from('users').select('*').order('created_at', { ascending: false });
+        res.json({ users: users.map(({ password_hash, ...u }) => u) });
+    } catch (error) { res.status(500).json({ error: 'Failed to get users' }); }
 });
 
 app.put('/api/owner/users/:userId', requireRole('owner'), async (req, res) => {
@@ -834,81 +568,52 @@ app.put('/api/owner/users/:userId', requireRole('owner'), async (req, res) => {
         for (const f of ['role', 'premium_expired_at', 'is_banned', 'daily_message_count']) {
             if (req.body[f] !== undefined) updates[f] = req.body[f];
         }
-        const { error } = await supabase.from('users').update(updates).eq('id', req.params.userId);
-        if (error) throw error;
-        
-        await supabase.from('logs').insert({
-            user_id: req.session.userId, action: 'user_updated',
-            details: { target: req.params.userId, updates }, ip_address: req.ip
-        });
-        
+        await supabase.from('users').update(updates).eq('id', req.params.userId);
         res.json({ message: 'User updated' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update user' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to update user' }); }
 });
 
 app.delete('/api/owner/users/:userId', requireRole('owner'), async (req, res) => {
     try {
         if (req.params.userId === req.session.userId) return res.status(400).json({ error: 'Cannot delete yourself' });
-        const { error } = await supabase.from('users').delete().eq('id', req.params.userId);
-        if (error) throw error;
+        await supabase.from('users').delete().eq('id', req.params.userId);
         res.json({ message: 'User deleted' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to delete user' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to delete user' }); }
 });
 
 app.get('/api/owner/characters', requireRole('owner'), async (req, res) => {
     try {
-        const { data, error } = await supabase.from('characters').select('*').order('created_at', { ascending: false });
-        if (error) throw error;
+        const { data } = await supabase.from('characters').select('*').order('created_at', { ascending: false });
         res.json({ characters: data });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get characters' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to get characters' }); }
 });
 
 app.post('/api/owner/characters', requireRole('owner'), async (req, res) => {
     try {
-        const { data, error } = await supabase.from('characters')
-            .insert({ ...req.body, created_by: req.session.userId }).select().single();
-        if (error) throw error;
+        const { data } = await supabase.from('characters').insert({ ...req.body, created_by: req.session.userId }).select().single();
         res.json({ character: data });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to create character' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to create character' }); }
 });
 
 app.put('/api/owner/characters/:charId', requireRole('owner'), async (req, res) => {
     try {
-        const { error } = await supabase.from('characters').update(req.body).eq('id', req.params.charId);
-        if (error) throw error;
+        await supabase.from('characters').update(req.body).eq('id', req.params.charId);
         res.json({ message: 'Character updated' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update character' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to update character' }); }
 });
 
 app.delete('/api/owner/characters/:charId', requireRole('owner'), async (req, res) => {
     try {
-        const { error } = await supabase.from('characters').delete().eq('id', req.params.charId);
-        if (error) throw error;
+        await supabase.from('characters').delete().eq('id', req.params.charId);
         res.json({ message: 'Character deleted' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to delete character' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to delete character' }); }
 });
 
 app.get('/api/owner/logs', requireRole('owner'), async (req, res) => {
     try {
-        const { data, error } = await supabase.from('logs').select('*')
-            .order('created_at', { ascending: false }).limit(100);
-        if (error) throw error;
+        const { data } = await supabase.from('logs').select('*').order('created_at', { ascending: false }).limit(100);
         res.json({ logs: data });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get logs' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to get logs' }); }
 });
 
 // ============================================
@@ -917,12 +622,8 @@ app.get('/api/owner/logs', requireRole('owner'), async (req, res) => {
 if (process.env.NODE_ENV !== 'production') {
     app.listen(PORT, '0.0.0.0', () => {
         console.log('============================================');
-        console.log('✨ AI Chat Server with Context History');
+        console.log('✨ AI Chat Server');
         console.log(`📱 http://localhost:${PORT}`);
-        console.log(`💬 http://localhost:${PORT}/chat.html`);
-        console.log(`👑 http://localhost:${PORT}/owner.html`);
-        console.log(`🧠 Context: 10 messages history`);
-        console.log(`🎭 Mood system: active`);
         console.log(`🖼️ OG Image: /og-image.png`);
         console.log('============================================');
     });

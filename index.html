@@ -5,31 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
     <!-- OPEN GRAPH -->
-<meta property="og:title" content="c.ai By MikuHost - AI Characters with Personality">
-<meta property="og:description" content="Modern AI Chat with WhatsApp-style interface. Chat with Miku and other AI characters, switch moods, and build relationships.">
-<meta property="og:image" content="https://files.catbox.moe/1euk9c.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:url" content="https://ca1-zeta.vercel.app/share">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="c.ai By MikuHost">
-<meta property="og:locale" content="en_US">
+    <meta property="og:title" content="c.ai By MikuHost - AI Characters with Personality">
+    <meta property="og:description" content="Modern AI Chat with WhatsApp-style interface. Chat with Miku and other AI characters, switch moods, and build relationships.">
+    <meta property="og:image" content="https://ca1-zeta.vercel.app/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:url" content="https://ca1-zeta.vercel.app">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="c.ai By MikuHost">
+    <meta property="og:locale" content="en_US">
 
-<!-- TWITTER CARD -->
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="c.ai By MikuHost - AI Characters with Personality">
-<meta name="twitter:description" content="Modern AI Chat with WhatsApp-style interface.">
-<meta name="twitter:image" content="https://files.catbox.moe/1euk9c.png">
+    <!-- TWITTER CARD -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="c.ai By MikuHost - AI Characters with Personality">
+    <meta name="twitter:description" content="Modern AI Chat with WhatsApp-style interface.">
+    <meta name="twitter:image" content="https://ca1-zeta.vercel.app/og-image.png">
     
     <!-- MISC -->
     <meta name="theme-color" content="#0a0a0f">
-    <meta name="description" content="Modern AI Chat with WhatsApp + Character AI concept. Chat with multiple AI characters, each with unique personality and mood system.">
+    <meta name="description" content="c.ai By MikuHost - Modern AI Chat with WhatsApp + Character AI concept. Chat with multiple AI characters, each with unique personality and mood system.">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="AI Chat">
+    <meta name="apple-mobile-web-app-title" content="c.ai">
     <link rel="icon" href="https://api.dicebear.com/7.x/bottts/svg?seed=ai-chat&backgroundColor=7c3aed" type="image/svg+xml">
     
-    <title>AI Chat - Login</title>
+    <title>c.ai By MikuHost</title>
     <style>
         :root {
             --bg: #0a0a0a;
@@ -150,7 +150,6 @@
             text-align: center; margin-top: 20px; color: var(--text-secondary); font-size: 13px;
         }
 
-        /* Toast */
         .toast {
             position: fixed; top: 20px; right: 20px; padding: 16px 24px;
             border-radius: 12px; color: white; font-weight: 500; z-index: 9999;
@@ -178,8 +177,8 @@
         <div class="card">
             <div class="logo">
                 <div class="logo-icon">💬</div>
-                <h1>AI Chat</h1>
-                <p>Chat with AI Characters</p>
+                <h1>c.ai</h1>
+                <p>By MikuHost</p>
             </div>
 
             <div class="tabs">
@@ -187,7 +186,6 @@
                 <button class="tab-btn" onclick="switchTab('register')">Register</button>
             </div>
 
-            <!-- Login Form -->
             <div id="login-panel" class="form-panel active">
                 <form onsubmit="handleLogin(event)">
                     <div class="form-group">
@@ -203,7 +201,6 @@
                 </form>
             </div>
 
-            <!-- Register Form -->
             <div id="register-panel" class="form-panel">
                 <form onsubmit="handleRegister(event)">
                     <div class="form-group">
@@ -245,42 +242,47 @@
             }
         }
 
-        function showToast(message, type = 'info') {
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
+        function showToast(message, type) {
+            type = type || 'info';
+            var toast = document.createElement('div');
+            toast.className = 'toast ' + type;
             toast.textContent = message;
             document.body.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s ease'; setTimeout(() => toast.remove(), 300); }, 3000);
+            setTimeout(function() {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300);
+            }, 3000);
         }
 
         async function handleLogin(e) {
             e.preventDefault();
-            const username = document.getElementById('login-username').value.trim();
-            const password = document.getElementById('login-password').value;
-            const errorEl = document.getElementById('login-error');
+            var username = document.getElementById('login-username').value.trim();
+            var password = document.getElementById('login-password').value;
+            var errorEl = document.getElementById('login-error');
             errorEl.textContent = '';
 
             try {
-                const res = await fetch('/api/auth/login', {
+                var res = await fetch('/api/auth/login', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({ username: username, password: password })
                 });
-                const data = await res.json();
+                var data = await res.json();
                 if (data.error) { errorEl.textContent = data.error; showToast(data.error, 'error'); return; }
                 
                 showToast('Login successful!', 'success');
-                setTimeout(() => {
-                    window.location.href = data.user?.role === 'owner' ? '/owner.html' : '/chat.html';
+                setTimeout(function() {
+                    window.location.href = data.user && data.user.role === 'owner' ? '/owner.html' : '/chat.html';
                 }, 500);
-            } catch (err) { errorEl.textContent = 'Connection error'; showToast('Connection error', 'error'); }
+            } catch(err) { errorEl.textContent = 'Connection error'; showToast('Connection error', 'error'); }
         }
 
         async function handleRegister(e) {
             e.preventDefault();
-            const username = document.getElementById('reg-username').value.trim();
-            const password = document.getElementById('reg-password').value;
-            const confirm = document.getElementById('reg-confirm').value;
-            const errorEl = document.getElementById('reg-error');
+            var username = document.getElementById('reg-username').value.trim();
+            var password = document.getElementById('reg-password').value;
+            var confirm = document.getElementById('reg-confirm').value;
+            var errorEl = document.getElementById('reg-error');
             errorEl.textContent = '';
 
             if (password !== confirm) { errorEl.textContent = 'Passwords do not match'; return; }
@@ -288,27 +290,26 @@
             if (password.length < 6) { errorEl.textContent = 'Password min 6 chars'; return; }
 
             try {
-                const res = await fetch('/api/auth/register', {
+                var res = await fetch('/api/auth/register', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({ username: username, password: password })
                 });
-                const data = await res.json();
+                var data = await res.json();
                 if (data.error) { errorEl.textContent = data.error; showToast(data.error, 'error'); return; }
                 
                 showToast('Registration successful!', 'success');
-                setTimeout(() => { window.location.href = '/chat.html'; }, 500);
-            } catch (err) { errorEl.textContent = 'Connection error'; showToast('Connection error', 'error'); }
+                setTimeout(function() { window.location.href = '/chat.html'; }, 500);
+            } catch(err) { errorEl.textContent = 'Connection error'; showToast('Connection error', 'error'); }
         }
 
-        // Check if logged in
-        (async () => {
+        (async function() {
             try {
-                const res = await fetch('/api/auth/me');
-                const data = await res.json();
+                var res = await fetch('/api/auth/me');
+                var data = await res.json();
                 if (data.user) {
                     window.location.href = data.user.role === 'owner' ? '/owner.html' : '/chat.html';
                 }
-            } catch (e) {}
+            } catch(e) {}
         })();
     </script>
 </body>
