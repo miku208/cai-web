@@ -14,7 +14,7 @@
         body { font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
         
         .dash { display:flex; min-height:100vh; }
-        .dash-sb { width:220px; min-width:220px; background:var(--sb); border-right:1px solid var(--border); padding:20px 12px; position:sticky; top:0; height:100vh; }
+        .dash-sb { width:220px; min-width:220px; background:var(--sb); border-right:1px solid var(--border); padding:20px 12px; position:sticky; top:0; height:100vh; overflow-y:auto; }
         .dash-logo { font-size:20px; font-weight:700; margin-bottom:24px; padding:0 12px; }
         .dash-nav { display:flex; flex-direction:column; gap:4px; }
         .dash-nav a, .dash-nav button { padding:10px 14px; border-radius:10px; cursor:pointer; color:var(--muted); font-size:13px; font-weight:500; text-decoration:none; display:block; background:none; border:none; text-align:left; font-family:inherit; transition:all .2s; }
@@ -78,6 +78,8 @@
         .prem-opt button:hover { border-color:var(--warn); }
         .prem-opt button.perm { border-color:var(--green); color:var(--green); }
         
+        .qris-preview { max-width:200px; border-radius:12px; border:2px solid var(--border); margin:10px auto; display:block; }
+        
         .toast { position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:10px;color:white;font-weight:500;z-index:200;font-size:12px; }
         .toast.ok { background:var(--green); }
         .toast.err { background:var(--red); }
@@ -106,8 +108,9 @@
                 <button data-p="users" onclick="switchPage('users')">👥 Users</button>
                 <button data-p="characters" onclick="switchPage('characters')">🤖 AI Manager</button>
                 <button data-p="packages" onclick="switchPage('packages')">📦 Packages</button>
+                <button data-p="settings" onclick="switchPage('settings')">⚙️ Settings</button>
                 <button data-p="logs" onclick="switchPage('logs')">📝 Logs</button>
-                <a href="/chat.html">💬 Chat App</a>
+                <a href="/chat">💬 Chat App</a>
                 <button onclick="logout()">🚪 Logout</button>
             </nav>
         </aside>
@@ -161,6 +164,27 @@
                 </div>
             </div>
             
+            <!-- Settings -->
+            <div id="page-settings" class="hidden">
+                <div class="banner-wrap"><img src="https://files.catbox.moe/1euk9c.png" alt="c.ai By MikuHost" loading="lazy"></div>
+                <div class="dash-title">Settings</div>
+                <div class="dash-sub">Manage website settings</div>
+                
+                <div class="table-wrap">
+                    <div class="table-head"><span>QRIS Image</span></div>
+                    <div style="padding:20px;">
+                        <div class="form-g">
+                            <label>QRIS Image URL</label>
+                            <input type="text" id="qrisUrl" placeholder="https://files.catbox.moe/xxx.png">
+                        </div>
+                        <div style="text-align:center;margin:12px 0;">
+                            <img id="qrisPreview" src="" class="qris-preview" onerror="this.style.display='none'" alt="QRIS Preview">
+                        </div>
+                        <button class="btn btn-p" onclick="saveSettings()" style="width:auto;">💾 Save QRIS</button>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Logs -->
             <div id="page-logs" class="hidden">
                 <div class="banner-wrap"><img src="https://files.catbox.moe/1euk9c.png" alt="c.ai By MikuHost" loading="lazy"></div>
@@ -187,24 +211,8 @@
                 <div class="form-g"><label>Endpoint URL (override)</label><input type="text" id="cEndpoint" placeholder="Leave empty to use package URL"></div>
                 <div class="form-g"><label>Model Name</label><input type="text" id="cModel" value="gpt-4"></div>
                 <div class="form-row">
-                    <div class="form-g">
-                        <label>Status</label>
-                        <select id="cStatus">
-                            <option value="online">Online</option>
-                            <option value="active">Active</option>
-                            <option value="maintenance">Maintenance</option>
-                            <option value="offline">Offline</option>
-                        </select>
-                    </div>
-                    <div class="form-g">
-                        <label>Visibility</label>
-                        <select id="cVisibility">
-                            <option value="all">All (Everyone)</option>
-                            <option value="public">Public</option>
-                            <option value="premium-only">Premium Only</option>
-                            <option value="private">Private (Owner Only)</option>
-                        </select>
-                    </div>
+                    <div class="form-g"><label>Status</label><select id="cStatus"><option value="online">Online</option><option value="active">Active</option><option value="maintenance">Maintenance</option><option value="offline">Offline</option></select></div>
+                    <div class="form-g"><label>Visibility</label><select id="cVisibility"><option value="all">All</option><option value="public">Public</option><option value="premium-only">Premium Only</option><option value="private">Private</option></select></div>
                 </div>
                 <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
                     <button type="button" class="btn btn-s" onclick="closeCharModal()">Cancel</button>
@@ -249,130 +257,119 @@
 
     <script>
         async function api(url, opt = {}) {
-            const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opt });
-            const d = await r.json();
+            var r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opt });
+            var d = await r.json();
             if (!r.ok) throw new Error(d.error || 'Error');
             return d;
         }
         
-        let allChars = [], allPkgs = [], premId = null;
+        var allChars = [], allPkgs = [], premId = null;
         
-        (async () => {
-            try { const d = await api('/api/auth/me'); if (!d.user || d.user.role !== 'owner') { location.href = '/'; return; } } catch(e) { location.href = '/'; }
-            loadStats(); loadUsers(); loadChars(); loadPkgs(); loadLogs();
+        (async function() {
+            try { var d = await api('/api/auth/me'); if (!d.user || d.user.role !== 'owner') { location.href = '/'; return; } } catch(e) { location.href = '/'; }
+            loadStats(); loadUsers(); loadChars(); loadPkgs(); loadLogs(); loadSettings();
             document.getElementById('charForm').addEventListener('submit', saveChar);
             document.getElementById('pkgForm').addEventListener('submit', savePkg);
         })();
         
         function switchPage(p) {
-            document.querySelectorAll('.dash-nav button').forEach(b => b.classList.remove('active'));
-            document.querySelector(`[data-p="${p}"]`)?.classList.add('active');
-            ['dashboard','users','characters','packages','logs'].forEach(x => document.getElementById(`page-${x}`).classList.toggle('hidden', x !== p));
+            document.querySelectorAll('.dash-nav button').forEach(function(b) { b.classList.remove('active'); });
+            var btn = document.querySelector('[data-p="' + p + '"]');
+            if (btn) btn.classList.add('active');
+            ['dashboard','users','characters','packages','settings','logs'].forEach(function(x) {
+                document.getElementById('page-' + x).classList.toggle('hidden', x !== p);
+            });
             if (p === 'users') loadUsers();
             if (p === 'characters') { loadChars(); loadPkgs(); }
             if (p === 'packages') loadPkgs();
+            if (p === 'settings') loadSettings();
             if (p === 'logs') loadLogs();
             if (p === 'dashboard') loadStats();
         }
         
         async function loadStats() {
-            try { const d = await api('/api/owner/stats'); document.getElementById('sUsers').textContent = d.users||0; document.getElementById('sChats').textContent = d.chats||0; document.getElementById('sMessages').textContent = d.messages||0; document.getElementById('sCharacters').textContent = d.characters||0; } catch(e) {}
+            try { var d = await api('/api/owner/stats'); document.getElementById('sUsers').textContent = d.users||0; document.getElementById('sChats').textContent = d.chats||0; document.getElementById('sMessages').textContent = d.messages||0; document.getElementById('sCharacters').textContent = d.characters||0; } catch(e) {}
         }
         
         async function loadUsers() {
             try {
-                const d = await api('/api/owner/users');
-                document.getElementById('usersBody').innerHTML = (d.users||[]).map(u => `
-                    <tr>
-                        <td><strong>${u.username}</strong></td>
-                        <td><span class="badge ${u.role}">${u.role}</span>${u.is_banned?' <span class="badge banned">banned</span>':''}</td>
-                        <td>${u.daily_message_count||0} / ${u.last_message_date||'-'}</td>
-                        <td>${u.premium_expired_at?new Date(u.premium_expired_at).toLocaleDateString():'-'}</td>
-                        <td>${u.is_banned?'❌':'✅'}</td>
-                        <td>
-                            ${!u.is_banned?`<button class="btn-sm d" onclick="banUser('${u.id}')">Ban</button>`:`<button class="btn-sm s" onclick="unbanUser('${u.id}')">Unban</button>`}
-                            ${u.role!=='premium'?`<button class="btn-sm w" onclick="showPrem('${u.id}','${u.username}')">⭐ Premium</button>`:`<button class="btn-sm p" onclick="setRole('${u.id}','user')">👤 User</button>`}
-                            <button class="btn-sm r" onclick="resetDaily('${u.id}')">🔄 Reset</button>
-                            ${u.role!=='owner'?`<button class="btn-sm d" onclick="delUser('${u.id}')">🗑️</button>`:''}
-                        </td>
-                    </tr>
-                `).join('');
+                var d = await api('/api/owner/users');
+                document.getElementById('usersBody').innerHTML = (d.users||[]).map(function(u) {
+                    return '<tr><td><strong>' + u.username + '</strong></td><td><span class="badge ' + u.role + '">' + u.role + '</span>' + (u.is_banned?' <span class="badge banned">banned</span>':'') + '</td><td>' + (u.daily_message_count||0) + ' / ' + (u.last_message_date||'-') + '</td><td>' + (u.premium_expired_at?new Date(u.premium_expired_at).toLocaleDateString():'-') + '</td><td>' + (u.is_banned?'❌':'✅') + '</td><td>' + (!u.is_banned?'<button class="btn-sm d" onclick="banUser(\''+u.id+'\')">Ban</button>':'<button class="btn-sm s" onclick="unbanUser(\''+u.id+'\')">Unban</button>') + (u.role!=='premium'?'<button class="btn-sm w" onclick="showPrem(\''+u.id+'\',\''+u.username+'\')">⭐ Premium</button>':'<button class="btn-sm p" onclick="setRole(\''+u.id+'\',\'user\')">👤 User</button>') + '<button class="btn-sm r" onclick="resetDaily(\''+u.id+'\')">🔄 Reset</button>' + (u.role!=='owner'?'<button class="btn-sm d" onclick="delUser(\''+u.id+'\')">🗑️</button>':'') + '</td></tr>';
+                }).join('');
             } catch(e) {}
         }
         
         async function loadChars() {
             try {
-                const d = await api('/api/owner/characters');
+                var d = await api('/api/owner/characters');
                 allChars = d.characters || [];
-                document.getElementById('charsBody').innerHTML = allChars.map(c => `
-                    <tr>
-                        <td style="font-size:22px;">${c.avatar_url?.startsWith('http')?`<img src="${c.avatar_url}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;" onerror="this.outerHTML='🤖'">`:c.avatar_url||'🤖'}</td>
-                        <td><strong>${c.name}</strong></td>
-                        <td><span class="badge ${c.ai_packages?.name?'premium':'online'}">${c.ai_packages?.name||'ChatEverywhere'}</span></td>
-                        <td><span class="badge online">${c.status||'online'}</span></td>
-                        <td><span class="badge ${c.visibility==='private'?'private':c.visibility==='premium-only'?'premium-only':'online'}">${c.visibility||'public'}</span></td>
-                        <td>
-                            <button class="btn-sm p" onclick="editChar('${c.id}')">✏️ Edit</button>
-                            <button class="btn-sm d" onclick="delChar('${c.id}')">🗑️</button>
-                        </td>
-                    </tr>
-                `).join('');
+                document.getElementById('charsBody').innerHTML = allChars.map(function(c) {
+                    return '<tr><td style="font-size:22px;">' + (c.avatar_url&&c.avatar_url.startsWith('http')?'<img src="'+c.avatar_url+'" style="width:30px;height:30px;border-radius:50%;object-fit:cover;" onerror="this.outerHTML=\'🤖\'">':c.avatar_url||'🤖') + '</td><td><strong>' + c.name + '</strong></td><td><span class="badge '+(c.ai_packages&&c.ai_packages.name?'premium':'online')+'">'+(c.ai_packages&&c.ai_packages.name?c.ai_packages.name:'ChatEverywhere')+'</span></td><td><span class="badge online">'+(c.status||'online')+'</span></td><td><span class="badge '+(c.visibility==='private'?'private':c.visibility==='premium-only'?'premium-only':'online')+'">'+(c.visibility||'public')+'</span></td><td><button class="btn-sm p" onclick="editChar(\''+c.id+'\')">✏️ Edit</button> <button class="btn-sm d" onclick="delChar(\''+c.id+'\')">🗑️</button></td></tr>';
+                }).join('');
             } catch(e) {}
         }
         
         async function loadPkgs() {
             try {
-                const d = await api('/api/owner/packages');
+                var d = await api('/api/owner/packages');
                 allPkgs = d.packages || [];
-                // Update dropdown di character form
-                const sel = document.getElementById('cPackage');
-                sel.innerHTML = '<option value="">Default (ChatEverywhere)</option>' + allPkgs.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-                // Render table
-                document.getElementById('pkgsBody').innerHTML = allPkgs.map(p => `
-                    <tr>
-                        <td><strong>${p.name}</strong></td>
-                        <td>${p.url}</td>
-                        <td>${p.api_key?'✅ Set':'❌ None'}</td>
-                        <td>
-                            <button class="btn-sm p" onclick="editPkg('${p.id}')">✏️ Edit</button>
-                            <button class="btn-sm d" onclick="delPkg('${p.id}')">🗑️</button>
-                        </td>
-                    </tr>
-                `).join('');
+                var sel = document.getElementById('cPackage');
+                sel.innerHTML = '<option value="">Default (ChatEverywhere)</option>' + allPkgs.map(function(p) { return '<option value="'+p.id+'">'+p.name+'</option>'; }).join('');
+                document.getElementById('pkgsBody').innerHTML = allPkgs.map(function(p) {
+                    return '<tr><td><strong>'+p.name+'</strong></td><td>'+p.url+'</td><td>'+(p.api_key?'✅ Set':'❌ None')+'</td><td><button class="btn-sm p" onclick="editPkg(\''+p.id+'\')">✏️ Edit</button> <button class="btn-sm d" onclick="delPkg(\''+p.id+'\')">🗑️</button></td></tr>';
+                }).join('');
             } catch(e) {}
         }
         
         async function loadLogs() {
             try {
-                const d = await api('/api/owner/logs');
-                document.getElementById('logsBody').innerHTML = (d.logs||[]).map(l => `
-                    <tr><td>${new Date(l.created_at).toLocaleString()}</td><td>${l.user_id||'-'}</td><td>${l.action}</td><td>${typeof l.details==='object'?JSON.stringify(l.details).substring(0,80):(l.details||'-')}</td><td>${l.ip_address||'-'}</td></tr>
-                `).join('');
+                var d = await api('/api/owner/logs');
+                document.getElementById('logsBody').innerHTML = (d.logs||[]).map(function(l) {
+                    return '<tr><td>'+new Date(l.created_at).toLocaleString()+'</td><td>'+(l.user_id||'-')+'</td><td>'+l.action+'</td><td>'+(typeof l.details==='object'?JSON.stringify(l.details).substring(0,80):(l.details||'-'))+'</td><td>'+(l.ip_address||'-')+'</td></tr>';
+                }).join('');
             } catch(e) {}
         }
         
-        // User actions
-        async function updUser(id, data) { await api(`/api/owner/users/${id}`, { method:'PUT', body:JSON.stringify(data) }); loadUsers(); }
+        async function loadSettings() {
+            try {
+                var d = await api('/api/settings');
+                if (d.settings) {
+                    document.getElementById('qrisUrl').value = d.settings.qris_url || '';
+                    var preview = document.getElementById('qrisPreview');
+                    preview.src = d.settings.qris_url || '';
+                    preview.style.display = d.settings.qris_url ? 'block' : 'none';
+                }
+            } catch(e) {}
+        }
+        
+        async function saveSettings() {
+            var qris_url = document.getElementById('qrisUrl').value;
+            await api('/api/settings', { method:'PUT', body: JSON.stringify({ qris_url: qris_url }) });
+            document.getElementById('qrisPreview').src = qris_url;
+            document.getElementById('qrisPreview').style.display = qris_url ? 'block' : 'none';
+            toast('QRIS saved!', 'ok');
+        }
+        
+        async function updUser(id, data) { await api('/api/owner/users/'+id, { method:'PUT', body:JSON.stringify(data) }); loadUsers(); }
         function banUser(id) { updUser(id, { is_banned: true }); toast('Banned','ok'); }
         function unbanUser(id) { updUser(id, { is_banned: false }); toast('Unbanned','ok'); }
-        function setRole(id, role) { updUser(id, { role }); toast('Role updated','ok'); }
+        function setRole(id, role) { updUser(id, { role: role }); toast('Role updated','ok'); }
         function resetDaily(id) { updUser(id, { daily_message_count: 0, last_message_date: new Date().toISOString().split('T')[0] }); toast('Daily reset!','ok'); }
-        async function delUser(id) { if(!confirm('Delete permanently?'))return; await api(`/api/owner/users/${id}`,{method:'DELETE'}); loadUsers(); toast('Deleted','ok'); }
+        async function delUser(id) { if(!confirm('Delete permanently?'))return; await api('/api/owner/users/'+id,{method:'DELETE'}); loadUsers(); toast('Deleted','ok'); }
         
-        // Premium
         function showPrem(id, name) { premId = id; document.getElementById('premUser').textContent = name; document.getElementById('premModal').classList.remove('hidden'); }
         function closePremModal() { document.getElementById('premModal').classList.add('hidden'); premId = null; }
         function setPremium(dur) {
             if (!premId) return;
-            const d = new Date();
+            var d = new Date();
             if (dur === 'permanent') d.setFullYear(d.getFullYear() + 100);
             else d.setDate(d.getDate() + parseInt(dur));
             updUser(premId, { role: 'premium', premium_expired_at: d.toISOString() });
             closePremModal();
-            toast(`Premium ${dur==='permanent'?'Permanent':dur+' days'}!`,'ok');
+            toast('Premium '+(dur==='permanent'?'Permanent':dur+' days')+'!','ok');
         }
         
-        // Character modal
         function showAddForm() {
             document.getElementById('editId').value = '';
             document.getElementById('charModalTitle').textContent = 'Add AI Character';
@@ -384,7 +381,7 @@
         }
         
         function editChar(id) {
-            const c = allChars.find(x => x.id === id); if (!c) return;
+            var c = allChars.find(function(x) { return x.id === id; }); if (!c) return;
             document.getElementById('editId').value = c.id;
             document.getElementById('charModalTitle').textContent = 'Edit AI Character';
             document.getElementById('cName').value = c.name || '';
@@ -403,7 +400,7 @@
         
         async function saveChar(e) {
             e.preventDefault();
-            const data = {
+            var data = {
                 name: document.getElementById('cName').value,
                 avatar_url: document.getElementById('cAvatar').value,
                 description: document.getElementById('cDesc').value,
@@ -414,15 +411,14 @@
                 status: document.getElementById('cStatus').value,
                 visibility: document.getElementById('cVisibility').value
             };
-            const editId = document.getElementById('editId').value;
-            const url = editId ? `/api/owner/characters/${editId}` : '/api/owner/characters';
-            const method = editId ? 'PUT' : 'POST';
-            try { await api(url, { method, body: JSON.stringify(data) }); closeCharModal(); loadChars(); toast(editId?'Updated!':'Created!','ok'); } catch(e) { toast(e.message,'err'); }
+            var editId = document.getElementById('editId').value;
+            var url = editId ? '/api/owner/characters/'+editId : '/api/owner/characters';
+            var method = editId ? 'PUT' : 'POST';
+            try { await api(url, { method:method, body: JSON.stringify(data) }); closeCharModal(); loadChars(); toast(editId?'Updated!':'Created!','ok'); } catch(e) { toast(e.message,'err'); }
         }
         
-        async function delChar(id) { if(!confirm('Delete?'))return; await api(`/api/owner/characters/${id}`,{method:'DELETE'}); loadChars(); toast('Deleted','ok'); }
+        async function delChar(id) { if(!confirm('Delete?'))return; await api('/api/owner/characters/'+id,{method:'DELETE'}); loadChars(); toast('Deleted','ok'); }
         
-        // Package modal
         function showPkgForm() {
             document.getElementById('pkgEditId').value = '';
             document.getElementById('pkgModalTitle').textContent = 'Add Package';
@@ -431,7 +427,7 @@
         }
         
         function editPkg(id) {
-            const p = allPkgs.find(x => x.id === id); if (!p) return;
+            var p = allPkgs.find(function(x) { return x.id === id; }); if (!p) return;
             document.getElementById('pkgEditId').value = p.id;
             document.getElementById('pkgModalTitle').textContent = 'Edit Package';
             document.getElementById('pkgName').value = p.name || '';
@@ -444,20 +440,20 @@
         
         async function savePkg(e) {
             e.preventDefault();
-            const data = {
+            var data = {
                 name: document.getElementById('pkgName').value,
                 url: document.getElementById('pkgUrl').value,
                 api_key: document.getElementById('pkgApiKey').value || null
             };
-            const editId = document.getElementById('pkgEditId').value;
-            const url = editId ? `/api/owner/packages/${editId}` : '/api/owner/packages';
-            const method = editId ? 'PUT' : 'POST';
-            try { await api(url, { method, body: JSON.stringify(data) }); closePkgModal(); loadPkgs(); toast(editId?'Updated!':'Created!','ok'); } catch(e) { toast(e.message,'err'); }
+            var editId = document.getElementById('pkgEditId').value;
+            var url = editId ? '/api/owner/packages/'+editId : '/api/owner/packages';
+            var method = editId ? 'PUT' : 'POST';
+            try { await api(url, { method:method, body: JSON.stringify(data) }); closePkgModal(); loadPkgs(); toast(editId?'Updated!':'Created!','ok'); } catch(e) { toast(e.message,'err'); }
         }
         
-        async function delPkg(id) { if(!confirm('Delete?'))return; await api(`/api/owner/packages/${id}`,{method:'DELETE'}); loadPkgs(); toast('Deleted','ok'); }
+        async function delPkg(id) { if(!confirm('Delete?'))return; await api('/api/owner/packages/'+id,{method:'DELETE'}); loadPkgs(); toast('Deleted','ok'); }
         
-        function toast(m, t='ok') { const e = document.createElement('div'); e.className = 'toast ' + t; e.textContent = m; document.body.appendChild(e); setTimeout(() => e.remove(), 2500); }
+        function toast(m, t) { t = t || 'ok'; var e = document.createElement('div'); e.className = 'toast ' + t; e.textContent = m; document.body.appendChild(e); setTimeout(function() { e.remove(); }, 2500); }
         async function logout() { await api('/api/auth/logout',{method:'POST'}); location.href = '/'; }
     </script>
 </body>
