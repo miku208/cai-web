@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="theme-color" content="#0a0a0f">
+    <title>QRIS - Support C.AI</title>
+    <style>
+        :root { --bg: #0a0a0f; --card: #1a1b23; --border: rgba(255,255,255,0.08); --text: #f1f1f3; --muted: #71717a; --acc: #7c3aed; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family:system-ui,sans-serif; background:var(--bg); color:var(--text);
+            min-height:100vh; display:flex; flex-direction:column; align-items:center;
+            justify-content:center; padding:20px;
+        }
+        .card {
+            background:var(--card); border:1px solid var(--border);
+            border-radius:24px; padding:32px 24px; text-align:center;
+            max-width:420px; width:100%;
+        }
+        .card h1 { font-size:24px; margin-bottom:4px; }
+        .card .heart { font-size:40px; animation:beat 1.5s infinite; display:inline-block; margin-bottom:8px; }
+        @keyframes beat {
+            0%,100%{transform:scale(1);} 15%{transform:scale(1.3);}
+            30%{transform:scale(1);} 45%{transform:scale(1.2);} 60%{transform:scale(1);}
+        }
+        .card p { color:var(--muted); font-size:13px; margin-bottom:20px; line-height:1.5; }
+        .qris-img {
+            max-width:320px; width:100%; margin:0 auto;
+            border-radius:16px; border:2px solid var(--border);
+            display:block;
+        }
+        .qris-fallback {
+            padding:40px; color:var(--muted); font-size:14px;
+            display:none;
+        }
+        .btn-back {
+            display:inline-block; margin-top:20px; padding:10px 24px;
+            background:var(--acc); color:white; border-radius:20px;
+            text-decoration:none; font-size:13px; font-weight:600;
+        }
+        .footer { margin-top:20px; color:var(--muted); font-size:11px; }
+        .footer a { color:var(--acc); }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="heart">❤️</div>
+        <h1>Scan QRIS</h1>
+        <p>All Payment • Nominal Bebas<br>Support c.ai By MikuHost</p>
+        <img id="qrisImg" class="qris-img" src="" alt="QRIS" onerror="this.style.display='none';document.getElementById('qrisFallback').style.display='block';">
+        <div id="qrisFallback" class="qris-fallback">📷 QRIS Coming Soon</div>
+        <a href="/" class="btn-back">← Back to Login</a>
+    </div>
+    <div class="footer">
+        MikuHost<a href="https://github.com/mikuhost">MikuHost</a>
+    </div>
+
+    <script>
+        (async function() {
+            try {
+                var r = await fetch('/api/settings');
+                var d = await r.json();
+                if (d.settings && d.settings.qris_url) {
+                    var img = document.getElementById('qrisImg');
+                    img.src = d.settings.qris_url;
+                    img.style.display = 'block';
+                    document.getElementById('qrisFallback').style.display = 'none';
+                }
+            } catch(e) {}
+        })();
+    </script>
+</body>
+</html>

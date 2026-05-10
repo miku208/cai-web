@@ -85,6 +85,7 @@ app.get('/chat.html', (req, res) => res.sendFile(path.join(__dirname, 'chat.html
 app.get('/owner.html', (req, res) => res.sendFile(path.join(__dirname, 'owner.html')));
 app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
 app.get('/owner', (req, res) => res.sendFile(path.join(__dirname, 'owner.html')));
+app.get('/qris', (req, res) => res.sendFile(path.join(__dirname, 'qris.html')));
 
 // ============================================
 // PASSWORD UTILS

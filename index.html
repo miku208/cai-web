@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="Modern AI Chat with WhatsApp-style interface.">
   <meta name="twitter:image" content="https://cdn.aceimg.com/27a9dbe8f.jpg">
   <meta name="theme-color" content="#0a0a0f">
-  <meta name="description" content="c.ai By MikuHost - Free AI Chat with multiple characters, mood system, and personality. Powered by community support.">
+  <meta name="description" content="c.ai By MikuHost - Free AI Chat with multiple characters, mood system, and personality.">
   
   <title>c.ai By MikuHost - Free AI Chat</title>
   <style>
@@ -34,7 +34,6 @@
       --danger: #e74c3c;
       --success: #2ecc71;
       --input-bg: rgba(255, 255, 255, 0.08);
-      --pink: #e91e63;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -150,7 +149,7 @@
       background: linear-gradient(135deg, #e91e63, #c62828);
       color: white; border-radius: 20px; border: none;
       cursor: pointer; font-size: 13px; font-weight: 600;
-      font-family: inherit; transition: all 0.3s;
+      font-family: inherit; transition: all 0.3s; text-decoration: none;
     }
     .btn-support:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(233, 30, 99, 0.4); }
 
@@ -160,35 +159,6 @@
       padding: 5px 10px; border-radius: 10px; background: var(--input-bg); transition: all 0.2s;
     }
     .support-links a:hover { color: var(--text); background: rgba(255,255,255,0.12); }
-
-    /* QRIS MODAL */
-    .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.8);
-      display: flex; align-items: center; justify-content: center; z-index: 1000;
-    }
-    .modal-overlay.hidden { display: none; }
-    .modal-box {
-      background: var(--card-bg); border: 1px solid var(--glass-border);
-      border-radius: 20px; padding: 28px 24px; width: 90%; max-width: 340px;
-      text-align: center; position: relative; animation: popIn 0.3s ease;
-    }
-    @keyframes popIn {
-      from { transform: scale(0.9); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
-    }
-    .modal-close {
-      position: absolute; top: 10px; right: 14px;
-      background: none; border: none; color: var(--text-secondary);
-      font-size: 20px; cursor: pointer; padding: 4px;
-    }
-    .modal-box h3 {
-      font-size: 16px; margin-bottom: 4px;
-      background: linear-gradient(135deg, #e91e63, #ff6b9d);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .qris-modal-img { max-width: 220px; margin: 0 auto; }
-    .qris-modal-img img { width: 100%; border-radius: 12px; border: 2px solid var(--glass-border); }
 
     .footer-text { text-align: center; margin-top: 10px; color: var(--text-secondary); font-size: 10px; }
 
@@ -226,7 +196,7 @@
 </head>
 <body>
   <div class="banner-top">
-    <img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="C.AI By MikuHost" loading="eager">
+    <img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai By MikuHost" loading="eager">
   </div>
 
   <div class="container">
@@ -266,32 +236,13 @@
     <div class="support-section">
       <div class="heart">❤️</div>
       <h3>Support This Project</h3>
-      <p>Website ini GRATIS. API key & server butuh biaya bulanan. Bantu kami tetap hidup! 💜</p>
-      <button class="btn-support" onclick="openQrisModal()">☕ Support via QRIS</button>
+      <p>Website ini GRATIS selamanya. API key & server butuh biaya bulanan. Bantu kami tetap hidup! 💜</p>
+      <a href="/qris" class="btn-support">☕ Support via QRIS</a>
       <div class="support-links">
-        <a href="https://github.com/miku208" target="_blank">GitHub</a>
-        <a href="/chat">Chat</a>
-        <a href="/owner">Owner</a>
       </div>
     </div>
 
     <div class="footer-text">MikuHost</div>
-  </div>
-
-  <!-- QRIS MODAL -->
-  <div class="modal-overlay hidden" id="qrisModal">
-    <div class="modal-box">
-      <button class="modal-close" onclick="closeQrisModal()">✕</button>
-      <h3>💜 Scan QRIS</h3>
-      <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px;">All Payment • Nominal Bebas</p>
-      <div class="qris-modal-img">
-        <img src="" alt="QRIS" id="qrisModalImg" onerror="this.style.display='none';document.getElementById('qrisModalFallback').style.display='block';">
-        <div id="qrisModalFallback" style="display:none;padding:30px;color:var(--text-secondary);font-size:13px;">
-          📷 QRIS Coming Soon
-        </div>
-      </div>
-      <p style="color:var(--text-secondary);font-size:10px;margin-top:8px;">Terima kasih atas supportnya! 🙏</p>
-    </div>
   </div>
 
   <div class="banner-bottom">
@@ -330,19 +281,6 @@
         setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300);
       }, 3000);
     }
-
-    function openQrisModal() {
-      document.getElementById('qrisModal').classList.remove('hidden');
-    }
-
-    function closeQrisModal() {
-      document.getElementById('qrisModal').classList.add('hidden');
-    }
-
-    // Tutup modal kalau klik di luar
-    document.addEventListener('click', function(e) {
-      if (e.target.id === 'qrisModal') closeQrisModal();
-    });
 
     async function handleLogin(e) {
       e.preventDefault();
@@ -386,21 +324,6 @@
       } catch(err) { errorEl.textContent = 'Connection error'; showToast('Connection error', 'error'); }
     }
 
-    // Load QRIS dari API
-    (async function loadQris() {
-      try {
-        var r = await fetch('/api/settings');
-        var d = await r.json();
-        if (d.settings && d.settings.qris_url) {
-          var img = document.getElementById('qrisModalImg');
-          img.src = d.settings.qris_url;
-          img.style.display = 'block';
-          document.getElementById('qrisModalFallback').style.display = 'none';
-        }
-      } catch(e) {}
-    })();
-
-    // Auto-redirect kalau udah login
     (async function() {
       try {
         var res = await fetch('/api/auth/me');
