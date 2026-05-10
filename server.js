@@ -79,10 +79,12 @@ app.use(session({
 
 // ============================================
 // SERVE HTML FILES
-// ============================================
+// ============================================//
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/chat.html', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
 app.get('/owner.html', (req, res) => res.sendFile(path.join(__dirname, 'owner.html')));
+app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
+app.get('/owner', (req, res) => res.sendFile(path.join(__dirname, 'owner.html')));
 
 // ============================================
 // PASSWORD UTILS
@@ -791,6 +793,18 @@ app.get('/api/auth/me', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: 'Failed to get user data' });
     }
+});
+
+// Get settings
+app.get('/api/settings', async (req, res) => {
+    const { data } = await supabase.from('settings').select('*').eq('id', 1).single();
+    res.json({ settings: data });
+});
+
+// Update settings (owner only)
+app.put('/api/settings', requireRole('owner'), async (req, res) => {
+    await supabase.from('settings').update(req.body).eq('id', 1);
+    res.json({ success: true });
 });
 
 // ============================================
