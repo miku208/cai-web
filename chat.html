@@ -8,7 +8,7 @@
         :root {
             --bg: #0a0a0f; --sb: #121217; --card: #1a1b23;
             --border: rgba(255,255,255,0.08); --text: #f1f1f3; --muted: #71717a;
-            --acc: #7c3aed; --red: #ef4444; --green: #22c55e;
+            --acc: #7c3aed; --red: #ef4444; --green: #22c55e; --warn: #f59e0b;
         }
         * { margin:0; padding:0; box-sizing:border-box; }
         html,body { height:100%; width:100%; overflow:hidden; position:fixed; top:0; left:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); }
@@ -31,7 +31,9 @@
         .ai-inf { flex:1;min-width:0; }
         .ai-inf .n { font-weight:600;font-size:13px; }
         .ai-inf .d { font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-        .ai-badge { font-size:9px;padding:2px 6px;border-radius:8px;background:rgba(239,68,68,0.2);color:#f87171;display:inline-block; }
+        .ai-badge { font-size:9px;padding:2px 6px;border-radius:8px;display:inline-block;margin-top:2px; }
+        .ai-badge.private { background:rgba(239,68,68,0.2);color:#f87171; }
+        .ai-badge.premium { background:rgba(245,158,11,0.2);color:#fbbf24; }
         
         .sb-foot { padding:12px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between; }
         .u-inf { display:flex;align-items:center;gap:8px; }
@@ -49,7 +51,6 @@
         .h-st { font-size:11px;color:var(--muted); }
         .dot { width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;margin-right:4px; }
         
-        /* MOOD */
         .mood-wrap { position:relative; flex-shrink:0; }
         .mood-btn { display:flex;align-items:center;gap:5px;background:var(--card);padding:6px 10px;border-radius:20px;cursor:pointer;user-select:none;font-size:12px;border:1px solid var(--border); }
         .mood-e { font-size:18px; }
@@ -109,7 +110,6 @@
 <body>
     <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
     <div class="app">
-        <!-- SIDEBAR -->
         <aside class="sidebar" id="sidebar">
             <div class="sb-head">
                 <h3>🤖 AI Characters <button onclick="refreshAIs()" style="background:var(--acc);border:none;color:white;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;">↻</button></h3>
@@ -128,7 +128,6 @@
             </div>
         </aside>
         
-        <!-- MAIN -->
         <main class="main">
             <header class="header">
                 <button class="ham" onclick="openSidebar()">☰</button>
@@ -141,7 +140,6 @@
                     </div>
                 </div>
                 
-                <!-- MOOD INDICATOR -->
                 <div class="mood-wrap">
                     <div class="mood-btn" onclick="toggleMood()">
                         <span class="mood-e" id="moodE">😐</span>
@@ -171,13 +169,11 @@
         </main>
     </div>
 
-    <!-- Limit Modal -->
     <div class="modal hidden" id="limitModal">
         <div class="modal-b"><span style="font-size:40px;">✨</span><h3>Daily Limit Reached</h3><p>Come back tomorrow! 🌙</p><button class="btn-p" onclick="document.getElementById('limitModal').classList.add('hidden')">Got it</button></div>
     </div>
 
     <script>
-        // API
         async function api(url, opt = {}) {
             const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opt });
             const d = await r.json();
@@ -191,8 +187,12 @@
         
         function saveLS() { try { localStorage.setItem('lc', JSON.stringify({cid:chatId, mid:ai?.id, mood, rel:relLevel, t:Date.now()})); } catch(e) {} }
         function loadLS() { try { const d = JSON.parse(localStorage.getItem('lc')); if (d && Date.now()-d.t < 864e5) return d; } catch(e) {} return null; }
+        function getBadge(v) {
+            if (v === 'private') return '<span class="ai-badge private">🔒 Private</span>';
+            if (v === 'premium-only') return '<span class="ai-badge premium">⭐ Premium</span>';
+            return '';
+        }
         
-        // INIT
         (async () => {
             try {
                 const d = await api('/api/auth/me');
@@ -216,7 +216,6 @@
         
         setInterval(refreshAIs, 30000);
         
-        // SIDEBAR
         function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('on'); refreshAIs(); }
         function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('on'); }
         function toast(m, t='inf') { const e = document.createElement('div'); e.className = 'toast ' + (t==='error'?'err':t==='success'?'ok':'inf'); e.textContent = m; document.body.appendChild(e); setTimeout(() => e.remove(), 2500); }
@@ -230,7 +229,11 @@
             el.innerHTML = ais.map(a => `
                 <div class="ai-item ${ai?.id === a.id ? 'active' : ''}" onclick="selectAIById('${a.id}')">
                     <div class="ai-av">${a.avatar_url?.startsWith('http') ? `<img src="${a.avatar_url}" onerror="this.parentElement.textContent='🤖'">` : (a.avatar_url || '🤖')}</div>
-                    <div class="ai-inf"><div class="n">${a.name}</div><div class="d">${a.description || a.status || 'Online'}</div>${a.visibility === 'private' ? '<span class="ai-badge">🔒 Private</span>' : ''}</div>
+                    <div class="ai-inf">
+                        <div class="n">${a.name}</div>
+                        <div class="d">${a.description || a.status || 'Online'}</div>
+                        ${getBadge(a.visibility)}
+                    </div>
                 </div>
             `).join('') || '<div style="text-align:center;color:var(--muted);padding:20px;">No AI found</div>';
         }
@@ -241,14 +244,13 @@
             el.innerHTML = filtered.map(a => `
                 <div class="ai-item ${ai?.id === a.id ? 'active' : ''}" onclick="selectAIById('${a.id}')">
                     <div class="ai-av">${a.avatar_url?.startsWith('http') ? `<img src="${a.avatar_url}" onerror="this.parentElement.textContent='🤖'">` : (a.avatar_url || '🤖')}</div>
-                    <div class="ai-inf"><div class="n">${a.name}</div><div class="d">${a.description || a.status || 'Online'}</div></div>
+                    <div class="ai-inf"><div class="n">${a.name}</div><div class="d">${a.description || a.status || 'Online'}</div>${getBadge(a.visibility)}</div>
                 </div>
             `).join('') || '<div style="text-align:center;color:var(--muted);padding:20px;">No AI found</div>';
         }
         
         function selectAIById(id) { const a = ais.find(x => x.id === id); if (a) selectAI(a); closeSidebar(); }
         
-        // MOOD
         function updMoodUI() {
             document.getElementById('moodE').textContent = MOODS[mood] || '😐';
             document.getElementById('moodT').textContent = mood;
@@ -266,7 +268,6 @@
         }
         document.addEventListener('click', e => { if (!e.target.closest('.mood-wrap')) document.getElementById('moodDD').classList.remove('show'); });
         
-        // CHAT
         async function selectAI(a, existingChatId) {
             ai = a;
             document.getElementById('msgs').innerHTML = '';
@@ -312,7 +313,6 @@
             document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
         }
         
-        // SEND
         async function sendMsg() {
             if (busy || !chatId) return;
             const inp = document.getElementById('chatInput'), txt = inp.value.trim();
