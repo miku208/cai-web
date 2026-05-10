@@ -34,7 +34,7 @@
         .stat-l { color:var(--muted); font-size:12px; margin-bottom:6px; }
         .stat-v { font-size:28px; font-weight:700; }
         
-        .table-wrap { background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+        .table-wrap { background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:20px; }
         .table-head { padding:14px 18px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); }
         .table-head span { font-weight:600; font-size:14px; }
         .table-scroll { overflow-x:auto; }
@@ -105,6 +105,7 @@
                 <button class="active" data-p="dashboard" onclick="switchPage('dashboard')">📊 Dashboard</button>
                 <button data-p="users" onclick="switchPage('users')">👥 Users</button>
                 <button data-p="characters" onclick="switchPage('characters')">🤖 AI Manager</button>
+                <button data-p="packages" onclick="switchPage('packages')">📦 Packages</button>
                 <button data-p="logs" onclick="switchPage('logs')">📝 Logs</button>
                 <a href="/chat.html">💬 Chat App</a>
                 <button onclick="logout()">🚪 Logout</button>
@@ -114,9 +115,7 @@
         <main class="dash-main">
             <!-- Dashboard -->
             <div id="page-dashboard">
-                <div class="banner-wrap">
-                    <img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai By MikuHost" loading="eager">
-                </div>
+                <div class="banner-wrap"><img src="https://files.catbox.moe/1euk9c.png" alt="c.ai By MikuHost" loading="eager"></div>
                 <div class="dash-title">Dashboard Overview</div>
                 <div class="dash-sub">Welcome back, Owner</div>
                 <div class="stats">
@@ -129,9 +128,7 @@
             
             <!-- Users -->
             <div id="page-users" class="hidden">
-                <div class="banner-wrap">
-                    <img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai By MikuHost" loading="lazy">
-                </div>
+                <div class="banner-wrap"><img src="https://files.catbox.moe/1euk9c.png" alt="c.ai By MikuHost" loading="lazy"></div>
                 <div class="dash-title">User Management</div>
                 <div class="dash-sub">Manage all registered users</div>
                 <div class="table-wrap">
@@ -142,23 +139,31 @@
             
             <!-- AI Manager -->
             <div id="page-characters" class="hidden">
-                <div class="banner-wrap">
-                    <img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai By MikuHost" loading="lazy">
-                </div>
+                <div class="banner-wrap"><img src="https://files.catbox.moe/1euk9c.png" alt="c.ai By MikuHost" loading="lazy"></div>
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
                     <div><div class="dash-title">AI Character Manager</div><div class="dash-sub">Create, edit, and manage AI characters</div></div>
                     <button class="btn btn-p" onclick="showAddForm()">+ Add AI</button>
                 </div>
                 <div class="table-wrap">
-                    <div class="table-scroll"><table><thead><tr><th>Avatar</th><th>Name</th><th>Model</th><th>Status</th><th>Visibility</th><th>Actions</th></tr></thead><tbody id="charsBody"><tr><td colspan="6" class="text-c">Loading...</td></tr></tbody></table></div>
+                    <div class="table-scroll"><table><thead><tr><th>Avatar</th><th>Name</th><th>Package</th><th>Status</th><th>Visibility</th><th>Actions</th></tr></thead><tbody id="charsBody"><tr><td colspan="6" class="text-c">Loading...</td></tr></tbody></table></div>
+                </div>
+            </div>
+            
+            <!-- Packages -->
+            <div id="page-packages" class="hidden">
+                <div class="banner-wrap"><img src="https://files.catbox.moe/1euk9c.png" alt="c.ai By MikuHost" loading="lazy"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                    <div><div class="dash-title">AI Packages</div><div class="dash-sub">Manage API endpoints & keys</div></div>
+                    <button class="btn btn-p" onclick="showPkgForm()">+ Add Package</button>
+                </div>
+                <div class="table-wrap">
+                    <div class="table-scroll"><table><thead><tr><th>Name</th><th>URL</th><th>API Key</th><th>Actions</th></tr></thead><tbody id="pkgsBody"><tr><td colspan="4" class="text-c">Loading...</td></tr></tbody></table></div>
                 </div>
             </div>
             
             <!-- Logs -->
             <div id="page-logs" class="hidden">
-                <div class="banner-wrap">
-                    <img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai By MikuHost" loading="lazy">
-                </div>
+                <div class="banner-wrap"><img src="https://files.catbox.moe/1euk9c.png" alt="c.ai By MikuHost" loading="lazy"></div>
                 <div class="dash-title">Activity Logs</div>
                 <div class="dash-sub">Recent system activities</div>
                 <div class="table-wrap">
@@ -178,9 +183,9 @@
                 <div class="form-g"><label>Avatar (emoji or URL)</label><input type="text" id="cAvatar" placeholder="🤖 or https://..."></div>
                 <div class="form-g"><label>Description</label><textarea id="cDesc" rows="2"></textarea></div>
                 <div class="form-g"><label>System Prompt *</label><textarea id="cPrompt" rows="4" required></textarea></div>
-                <div class="form-g"><label>Endpoint URL</label><input type="text" id="cEndpoint" placeholder="Leave empty for ChatEverywhere"></div>
+                <div class="form-g"><label>Package</label><select id="cPackage"><option value="">Default (ChatEverywhere)</option></select></div>
+                <div class="form-g"><label>Endpoint URL (override)</label><input type="text" id="cEndpoint" placeholder="Leave empty to use package URL"></div>
                 <div class="form-g"><label>Model Name</label><input type="text" id="cModel" value="gpt-4"></div>
-                <div class="form-g"><label>API Key (optional)</label><input type="text" id="cApiKey"></div>
                 <div class="form-row">
                     <div class="form-g">
                         <label>Status</label>
@@ -203,6 +208,23 @@
                 </div>
                 <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
                     <button type="button" class="btn btn-s" onclick="closeCharModal()">Cancel</button>
+                    <button type="submit" class="btn btn-p">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Package Modal -->
+    <div class="modal hidden" id="pkgModal">
+        <div class="modal-b" style="max-width:500px;">
+            <h3 id="pkgModalTitle">Add Package</h3>
+            <form id="pkgForm">
+                <input type="hidden" id="pkgEditId">
+                <div class="form-g"><label>Name *</label><input type="text" id="pkgName" required placeholder="e.g. Google Gemini"></div>
+                <div class="form-g"><label>URL *</label><input type="text" id="pkgUrl" required placeholder="gemini or https://..."></div>
+                <div class="form-g"><label>API Key (optional)</label><input type="text" id="pkgApiKey" placeholder="AIza... or sk-..."></div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+                    <button type="button" class="btn btn-s" onclick="closePkgModal()">Cancel</button>
                     <button type="submit" class="btn btn-p">Save</button>
                 </div>
             </form>
@@ -233,20 +255,22 @@
             return d;
         }
         
-        let allChars = [], premId = null;
+        let allChars = [], allPkgs = [], premId = null;
         
         (async () => {
             try { const d = await api('/api/auth/me'); if (!d.user || d.user.role !== 'owner') { location.href = '/'; return; } } catch(e) { location.href = '/'; }
-            loadStats(); loadUsers(); loadChars(); loadLogs();
+            loadStats(); loadUsers(); loadChars(); loadPkgs(); loadLogs();
             document.getElementById('charForm').addEventListener('submit', saveChar);
+            document.getElementById('pkgForm').addEventListener('submit', savePkg);
         })();
         
         function switchPage(p) {
             document.querySelectorAll('.dash-nav button').forEach(b => b.classList.remove('active'));
             document.querySelector(`[data-p="${p}"]`)?.classList.add('active');
-            ['dashboard','users','characters','logs'].forEach(x => document.getElementById(`page-${x}`).classList.toggle('hidden', x !== p));
+            ['dashboard','users','characters','packages','logs'].forEach(x => document.getElementById(`page-${x}`).classList.toggle('hidden', x !== p));
             if (p === 'users') loadUsers();
-            if (p === 'characters') loadChars();
+            if (p === 'characters') { loadChars(); loadPkgs(); }
+            if (p === 'packages') loadPkgs();
             if (p === 'logs') loadLogs();
             if (p === 'dashboard') loadStats();
         }
@@ -284,12 +308,34 @@
                     <tr>
                         <td style="font-size:22px;">${c.avatar_url?.startsWith('http')?`<img src="${c.avatar_url}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;" onerror="this.outerHTML='🤖'">`:c.avatar_url||'🤖'}</td>
                         <td><strong>${c.name}</strong></td>
-                        <td>${c.model_name||'-'}</td>
+                        <td><span class="badge ${c.ai_packages?.name?'premium':'online'}">${c.ai_packages?.name||'ChatEverywhere'}</span></td>
                         <td><span class="badge online">${c.status||'online'}</span></td>
                         <td><span class="badge ${c.visibility==='private'?'private':c.visibility==='premium-only'?'premium-only':'online'}">${c.visibility||'public'}</span></td>
                         <td>
                             <button class="btn-sm p" onclick="editChar('${c.id}')">✏️ Edit</button>
                             <button class="btn-sm d" onclick="delChar('${c.id}')">🗑️</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch(e) {}
+        }
+        
+        async function loadPkgs() {
+            try {
+                const d = await api('/api/owner/packages');
+                allPkgs = d.packages || [];
+                // Update dropdown di character form
+                const sel = document.getElementById('cPackage');
+                sel.innerHTML = '<option value="">Default (ChatEverywhere)</option>' + allPkgs.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                // Render table
+                document.getElementById('pkgsBody').innerHTML = allPkgs.map(p => `
+                    <tr>
+                        <td><strong>${p.name}</strong></td>
+                        <td>${p.url}</td>
+                        <td>${p.api_key?'✅ Set':'❌ None'}</td>
+                        <td>
+                            <button class="btn-sm p" onclick="editPkg('${p.id}')">✏️ Edit</button>
+                            <button class="btn-sm d" onclick="delPkg('${p.id}')">🗑️</button>
                         </td>
                     </tr>
                 `).join('');
@@ -305,6 +351,7 @@
             } catch(e) {}
         }
         
+        // User actions
         async function updUser(id, data) { await api(`/api/owner/users/${id}`, { method:'PUT', body:JSON.stringify(data) }); loadUsers(); }
         function banUser(id) { updUser(id, { is_banned: true }); toast('Banned','ok'); }
         function unbanUser(id) { updUser(id, { is_banned: false }); toast('Unbanned','ok'); }
@@ -312,6 +359,7 @@
         function resetDaily(id) { updUser(id, { daily_message_count: 0, last_message_date: new Date().toISOString().split('T')[0] }); toast('Daily reset!','ok'); }
         async function delUser(id) { if(!confirm('Delete permanently?'))return; await api(`/api/owner/users/${id}`,{method:'DELETE'}); loadUsers(); toast('Deleted','ok'); }
         
+        // Premium
         function showPrem(id, name) { premId = id; document.getElementById('premUser').textContent = name; document.getElementById('premModal').classList.remove('hidden'); }
         function closePremModal() { document.getElementById('premModal').classList.add('hidden'); premId = null; }
         function setPremium(dur) {
@@ -324,6 +372,7 @@
             toast(`Premium ${dur==='permanent'?'Permanent':dur+' days'}!`,'ok');
         }
         
+        // Character modal
         function showAddForm() {
             document.getElementById('editId').value = '';
             document.getElementById('charModalTitle').textContent = 'Add AI Character';
@@ -344,7 +393,7 @@
             document.getElementById('cPrompt').value = c.system_prompt || '';
             document.getElementById('cEndpoint').value = c.endpoint_url || '';
             document.getElementById('cModel').value = c.model_name || 'gpt-4';
-            document.getElementById('cApiKey').value = c.api_key || '';
+            document.getElementById('cPackage').value = c.package_id || '';
             document.getElementById('cStatus').value = c.status || 'online';
             document.getElementById('cVisibility').value = c.visibility || 'all';
             document.getElementById('charModal').classList.remove('hidden');
@@ -361,7 +410,7 @@
                 system_prompt: document.getElementById('cPrompt').value,
                 endpoint_url: document.getElementById('cEndpoint').value,
                 model_name: document.getElementById('cModel').value,
-                api_key: document.getElementById('cApiKey').value,
+                package_id: document.getElementById('cPackage').value || null,
                 status: document.getElementById('cStatus').value,
                 visibility: document.getElementById('cVisibility').value
             };
@@ -372,6 +421,41 @@
         }
         
         async function delChar(id) { if(!confirm('Delete?'))return; await api(`/api/owner/characters/${id}`,{method:'DELETE'}); loadChars(); toast('Deleted','ok'); }
+        
+        // Package modal
+        function showPkgForm() {
+            document.getElementById('pkgEditId').value = '';
+            document.getElementById('pkgModalTitle').textContent = 'Add Package';
+            document.getElementById('pkgForm').reset();
+            document.getElementById('pkgModal').classList.remove('hidden');
+        }
+        
+        function editPkg(id) {
+            const p = allPkgs.find(x => x.id === id); if (!p) return;
+            document.getElementById('pkgEditId').value = p.id;
+            document.getElementById('pkgModalTitle').textContent = 'Edit Package';
+            document.getElementById('pkgName').value = p.name || '';
+            document.getElementById('pkgUrl').value = p.url || '';
+            document.getElementById('pkgApiKey').value = p.api_key || '';
+            document.getElementById('pkgModal').classList.remove('hidden');
+        }
+        
+        function closePkgModal() { document.getElementById('pkgModal').classList.add('hidden'); }
+        
+        async function savePkg(e) {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('pkgName').value,
+                url: document.getElementById('pkgUrl').value,
+                api_key: document.getElementById('pkgApiKey').value || null
+            };
+            const editId = document.getElementById('pkgEditId').value;
+            const url = editId ? `/api/owner/packages/${editId}` : '/api/owner/packages';
+            const method = editId ? 'PUT' : 'POST';
+            try { await api(url, { method, body: JSON.stringify(data) }); closePkgModal(); loadPkgs(); toast(editId?'Updated!':'Created!','ok'); } catch(e) { toast(e.message,'err'); }
+        }
+        
+        async function delPkg(id) { if(!confirm('Delete?'))return; await api(`/api/owner/packages/${id}`,{method:'DELETE'}); loadPkgs(); toast('Deleted','ok'); }
         
         function toast(m, t='ok') { const e = document.createElement('div'); e.className = 'toast ' + t; e.textContent = m; document.body.appendChild(e); setTimeout(() => e.remove(), 2500); }
         async function logout() { await api('/api/auth/logout',{method:'POST'}); location.href = '/'; }
