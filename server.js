@@ -16,9 +16,78 @@ const PORT = process.env.PORT || 3000;
 // Supabase Configuration
 const supabase = createClient(config.supabase_url, config.supabase_anon_key);
 
-// Middleware
+// Basic Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ============================================
+// ALLOW SOCIAL MEDIA SCRAPERS (OG TAGS)
+// HARUS SEBELUM SESSION MIDDLEWARE
+// ============================================
+app.use((req, res, next) => {
+    const ua = (req.get('user-agent') || '').toLowerCase();
+    const scrapers = ['facebookexternalhit', 'twitterbot', 'whatsapp', 'telegrambot', 'discordbot', 'linkedinbot', 'slackbot'];
+    
+    if (scrapers.some(s => ua.includes(s)) && req.method === 'GET' && !req.path.startsWith('/api/')) {
+        console.log('✅ Scraper passed:', ua.substring(0, 60));
+        
+        // OG Image
+        if (req.path === '/og-image.png') {
+            res.setHeader('Content-Type', 'image/svg+xml');
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            return res.send(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+                <defs>
+                    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#0a0a0f"/>
+                        <stop offset="100%" style="stop-color:#1a1025"/>
+                    </linearGradient>
+                </defs>
+                <rect width="1200" height="630" fill="url(#bg)"/>
+                <circle cx="200" cy="200" r="150" fill="#7c3aed" opacity="0.1"/>
+                <circle cx="1000" cy="450" r="200" fill="#7c3aed" opacity="0.08"/>
+                <rect x="80" y="80" width="1040" height="470" rx="40" fill="#121217" stroke="#7c3aed" stroke-width="3" opacity="0.9"/>
+                <text x="600" y="240" text-anchor="middle" fill="white" font-size="80" font-family="sans-serif" font-weight="bold">c.ai</text>
+                <text x="600" y="310" text-anchor="middle" fill="#a0a0a0" font-size="30" font-family="sans-serif">By MikuHost</text>
+                <text x="600" y="380" text-anchor="middle" fill="#7c3aed" font-size="26" font-family="sans-serif">AI Characters with Personality</text>
+                <rect x="400" y="440" width="400" height="56" rx="28" fill="#7c3aed"/>
+                <text x="600" y="477" text-anchor="middle" fill="white" font-size="24" font-family="sans-serif" font-weight="bold">Start Chatting 💬</text>
+            </svg>`);
+        }
+        
+        // Index page for scrapers
+        if (req.path === '/' || req.path === '/index.html') {
+            return res.sendFile(path.join(__dirname, 'index.html'));
+        }
+    }
+    next();
+});
+
+// OG Image endpoint (for normal users too)
+app.get('/og-image.png', (req, res) => {
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+        <defs>
+            <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#0a0a0f"/>
+                <stop offset="100%" style="stop-color:#1a1025"/>
+            </linearGradient>
+        </defs>
+        <rect width="1200" height="630" fill="url(#bg)"/>
+        <circle cx="200" cy="200" r="150" fill="#7c3aed" opacity="0.1"/>
+        <circle cx="1000" cy="450" r="200" fill="#7c3aed" opacity="0.08"/>
+        <rect x="80" y="80" width="1040" height="470" rx="40" fill="#121217" stroke="#7c3aed" stroke-width="3" opacity="0.9"/>
+        <text x="600" y="240" text-anchor="middle" fill="white" font-size="80" font-family="sans-serif" font-weight="bold">c.ai</text>
+        <text x="600" y="310" text-anchor="middle" fill="#a0a0a0" font-size="30" font-family="sans-serif">By MikuHost</text>
+        <text x="600" y="380" text-anchor="middle" fill="#7c3aed" font-size="26" font-family="sans-serif">AI Characters with Personality</text>
+        <rect x="400" y="440" width="400" height="56" rx="28" fill="#7c3aed"/>
+        <text x="600" y="477" text-anchor="middle" fill="white" font-size="24" font-family="sans-serif" font-weight="bold">Start Chatting 💬</text>
+    </svg>`);
+});
+
+// ============================================
+// SESSION MIDDLEWARE
+// ============================================
 app.use(session({
     secret: config.session_secret || 'fallback-secret-change-me',
     resave: false,
@@ -29,48 +98,6 @@ app.use(session({
         maxAge: 24 * 60 * 60 * 1000
     }
 }));
-
-// ============================================
-// ALLOW SOCIAL MEDIA SCRAPERS (OG TAGS)
-// ============================================
-app.use((req, res, next) => {
-    const ua = (req.get('user-agent') || '').toLowerCase();
-    const scrapers = ['facebookexternalhit', 'twitterbot', 'whatsapp', 'telegrambot', 'discordbot', 'slackbot', 'linkedinbot'];
-    
-    if (scrapers.some(s => ua.includes(s))) {
-        // Hanya izinkan GET request ke halaman statis
-        if (req.method === 'GET' && !req.path.startsWith('/api/')) {
-            console.log('✅ Scraper allowed:', ua.substring(0, 50));
-            return next();
-        }
-    }
-    next();
-});
-
-// OG Image endpoint
-app.get('/og-image.png', (req, res) => {
-    res.setHeader('Content-Type', 'image/svg+xml');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    res.send(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-            <defs>
-                <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style="stop-color:#0a0a0f"/>
-                    <stop offset="100%" style="stop-color:#1a1025"/>
-                </linearGradient>
-            </defs>
-            <rect width="1200" height="630" fill="url(#bg)"/>
-            <circle cx="200" cy="200" r="150" fill="#7c3aed" opacity="0.1"/>
-            <circle cx="1000" cy="450" r="200" fill="#7c3aed" opacity="0.08"/>
-            <rect x="80" y="80" width="1040" height="470" rx="40" fill="#121217" stroke="#7c3aed" stroke-width="3" opacity="0.9"/>
-            <text x="600" y="240" text-anchor="middle" fill="white" font-size="80" font-family="sans-serif" font-weight="bold">c.ai</text>
-            <text x="600" y="310" text-anchor="middle" fill="#a0a0a0" font-size="30" font-family="sans-serif">By MikuHost</text>
-            <text x="600" y="380" text-anchor="middle" fill="#7c3aed" font-size="26" font-family="sans-serif">AI Characters with Personality</text>
-            <rect x="400" y="440" width="400" height="56" rx="28" fill="#7c3aed"/>
-            <text x="600" y="477" text-anchor="middle" fill="white" font-size="24" font-family="sans-serif" font-weight="bold">Start Chatting 💬</text>
-        </svg>
-    `);
-});
 
 // Serve HTML files from root
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
@@ -452,7 +479,6 @@ app.get('/api/characters', requireAuth, async (req, res) => {
         let query = supabase.from('characters').select('*');
         
         if (req.session.userRole === 'owner') {
-            // Owner lihat semua status online/active/maintenance
             query = query.in('status', ['online', 'active', 'maintenance']);
         } else if (req.session.userRole === 'premium') {
             query = query.in('status', ['online', 'active']).in('visibility', ['public', 'all', 'premium-only']);
@@ -464,7 +490,6 @@ app.get('/api/characters', requireAuth, async (req, res) => {
         if (error) throw error;
 
         if (!characters || characters.length === 0) {
-            // Insert default characters
             const defaults = [
                 {
                     name: 'GPT-4 Assistant', avatar_url: '🤖',
@@ -685,10 +710,10 @@ app.post('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
             .select('role, content')
             .eq('chat_id', chatId)
             .order('created_at', { ascending: false })
-            .limit(11); // 10 history + 1 current
+            .limit(11);
 
         const history = historyMessages 
-            ? historyMessages.reverse().slice(0, -1) // exclude pesan yang baru dikirim
+            ? historyMessages.reverse().slice(0, -1)
             : [];
         
         console.log(`📜 History context: ${history.length} messages`);
@@ -923,6 +948,7 @@ if (process.env.NODE_ENV !== 'production') {
         console.log(`👑 http://localhost:${PORT}/owner.html`);
         console.log(`🧠 Context: 10 messages history`);
         console.log(`🎭 Mood system: active`);
+        console.log(`🖼️ OG Image: /og-image.png`);
         console.log('============================================');
     });
 }
