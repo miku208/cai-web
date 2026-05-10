@@ -23,7 +23,6 @@
         
         .dash-main { flex:1; padding:28px; overflow-y:auto; }
         
-        /* BANNER */
         .banner-wrap { margin-bottom:20px; border-radius:16px; overflow:hidden; border:1px solid var(--border); box-shadow:0 4px 20px rgba(108,92,231,0.15); }
         .banner-wrap img { width:100%; height:auto; display:block; object-fit:cover; aspect-ratio:1200/400; }
         
@@ -40,7 +39,7 @@
         .table-head span { font-weight:600; font-size:14px; }
         .table-scroll { overflow-x:auto; }
         table { width:100%; border-collapse:collapse; }
-        th,td { padding:10px 14px; text-align:left; border-bottom:1px solid var(--border); font-size:12px; }
+        th,td { padding:10px 14px; text-align:left; border-bottom:1px solid var(--border); font-size:12px; white-space:nowrap; }
         th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
         
         .badge { padding:3px 8px; border-radius:10px; font-size:10px; font-weight:600; }
@@ -60,6 +59,7 @@
         .btn-sm.d { background:var(--red);color:white; }
         .btn-sm.s { background:var(--green);color:white; }
         .btn-sm.w { background:var(--warn);color:black; }
+        .btn-sm.r { background:rgba(124,58,237,0.2);color:#a78bfa; }
         
         .form-g { margin-bottom:14px; }
         .form-g label { display:block; margin-bottom:4px; color:var(--muted); font-size:12px; font-weight:500; }
@@ -114,11 +114,9 @@
         <main class="dash-main">
             <!-- Dashboard -->
             <div id="page-dashboard">
-                <!-- BANNER -->
                 <div class="banner-wrap">
                     <img src="https://files.catbox.moe/1euk9c.png" alt="c.ai By MikuHost" loading="eager">
                 </div>
-                
                 <div class="dash-title">Dashboard Overview</div>
                 <div class="dash-sub">Welcome back, Owner</div>
                 <div class="stats">
@@ -264,12 +262,13 @@
                     <tr>
                         <td><strong>${u.username}</strong></td>
                         <td><span class="badge ${u.role}">${u.role}</span>${u.is_banned?' <span class="badge banned">banned</span>':''}</td>
-                        <td>${u.daily_message_count||0}</td>
+                        <td>${u.daily_message_count||0} / ${u.last_message_date||'-'}</td>
                         <td>${u.premium_expired_at?new Date(u.premium_expired_at).toLocaleDateString():'-'}</td>
                         <td>${u.is_banned?'❌':'✅'}</td>
                         <td>
                             ${!u.is_banned?`<button class="btn-sm d" onclick="banUser('${u.id}')">Ban</button>`:`<button class="btn-sm s" onclick="unbanUser('${u.id}')">Unban</button>`}
                             ${u.role!=='premium'?`<button class="btn-sm w" onclick="showPrem('${u.id}','${u.username}')">⭐ Premium</button>`:`<button class="btn-sm p" onclick="setRole('${u.id}','user')">👤 User</button>`}
+                            <button class="btn-sm r" onclick="resetDaily('${u.id}')">🔄 Reset</button>
                             ${u.role!=='owner'?`<button class="btn-sm d" onclick="delUser('${u.id}')">🗑️</button>`:''}
                         </td>
                     </tr>
@@ -310,6 +309,7 @@
         function banUser(id) { updUser(id, { is_banned: true }); toast('Banned','ok'); }
         function unbanUser(id) { updUser(id, { is_banned: false }); toast('Unbanned','ok'); }
         function setRole(id, role) { updUser(id, { role }); toast('Role updated','ok'); }
+        function resetDaily(id) { updUser(id, { daily_message_count: 0, last_message_date: new Date().toISOString().split('T')[0] }); toast('Daily reset!','ok'); }
         async function delUser(id) { if(!confirm('Delete permanently?'))return; await api(`/api/owner/users/${id}`,{method:'DELETE'}); loadUsers(); toast('Deleted','ok'); }
         
         function showPrem(id, name) { premId = id; document.getElementById('premUser').textContent = name; document.getElementById('premModal').classList.remove('hidden'); }
