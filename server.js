@@ -16,53 +16,9 @@ const PORT = process.env.PORT || 3000;
 // Supabase Configuration
 const supabase = createClient(config.supabase_url, config.supabase_anon_key);
 
-// Basic Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
 // ============================================
-// ALLOW SOCIAL MEDIA SCRAPERS (OG TAGS)
-// HARUS SEBELUM SESSION MIDDLEWARE
+// OG IMAGE - HARUS PALING ATAS SEBELUM MIDDLEWARE
 // ============================================
-app.use((req, res, next) => {
-    const ua = (req.get('user-agent') || '').toLowerCase();
-    const scrapers = ['facebookexternalhit', 'twitterbot', 'whatsapp', 'telegrambot', 'discordbot', 'linkedinbot', 'slackbot'];
-    
-    if (scrapers.some(s => ua.includes(s)) && req.method === 'GET' && !req.path.startsWith('/api/')) {
-        console.log('✅ Scraper passed:', ua.substring(0, 60));
-        
-        // OG Image
-        if (req.path === '/og-image.png') {
-            res.setHeader('Content-Type', 'image/svg+xml');
-            res.setHeader('Cache-Control', 'public, max-age=86400');
-            return res.send(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-                <defs>
-                    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" style="stop-color:#0a0a0f"/>
-                        <stop offset="100%" style="stop-color:#1a1025"/>
-                    </linearGradient>
-                </defs>
-                <rect width="1200" height="630" fill="url(#bg)"/>
-                <circle cx="200" cy="200" r="150" fill="#7c3aed" opacity="0.1"/>
-                <circle cx="1000" cy="450" r="200" fill="#7c3aed" opacity="0.08"/>
-                <rect x="80" y="80" width="1040" height="470" rx="40" fill="#121217" stroke="#7c3aed" stroke-width="3" opacity="0.9"/>
-                <text x="600" y="240" text-anchor="middle" fill="white" font-size="80" font-family="sans-serif" font-weight="bold">c.ai</text>
-                <text x="600" y="310" text-anchor="middle" fill="#a0a0a0" font-size="30" font-family="sans-serif">By MikuHost</text>
-                <text x="600" y="380" text-anchor="middle" fill="#7c3aed" font-size="26" font-family="sans-serif">AI Characters with Personality</text>
-                <rect x="400" y="440" width="400" height="56" rx="28" fill="#7c3aed"/>
-                <text x="600" y="477" text-anchor="middle" fill="white" font-size="24" font-family="sans-serif" font-weight="bold">Start Chatting 💬</text>
-            </svg>`);
-        }
-        
-        // Index page for scrapers
-        if (req.path === '/' || req.path === '/index.html') {
-            return res.sendFile(path.join(__dirname, 'index.html'));
-        }
-    }
-    next();
-});
-
-// OG Image endpoint (for normal users too)
 app.get('/og-image.png', (req, res) => {
     res.setHeader('Content-Type', 'image/svg+xml');
     res.setHeader('Cache-Control', 'public, max-age=86400');
@@ -86,8 +42,27 @@ app.get('/og-image.png', (req, res) => {
 });
 
 // ============================================
-// SESSION MIDDLEWARE
+// ALLOW SOCIAL MEDIA SCRAPERS - TARUH SEBELUM SESSION
 // ============================================
+app.use((req, res, next) => {
+    const ua = (req.get('user-agent') || '').toLowerCase();
+    const scrapers = ['facebookexternalhit', 'twitterbot', 'whatsapp', 'telegrambot', 'discordbot', 'linkedinbot', 'slackbot'];
+    
+    if (scrapers.some(s => ua.includes(s)) && req.method === 'GET' && !req.path.startsWith('/api/')) {
+        console.log('✅ Scraper passed:', ua.substring(0, 60));
+        // Serve index.html langsung tanpa session
+        if (req.path === '/' || req.path === '/index.html') {
+            return res.sendFile(path.join(__dirname, 'index.html'));
+        }
+    }
+    next();
+});
+
+// Basic Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Session Middleware
 app.use(session({
     secret: config.session_secret || 'fallback-secret-change-me',
     resave: false,
