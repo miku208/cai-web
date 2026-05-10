@@ -42,6 +42,7 @@
         .u-rl { font-size:10px;color:var(--muted);text-transform:capitalize; }
         .btn-o { display:none;background:var(--acc);color:white;padding:5px 10px;border-radius:6px;text-decoration:none;font-size:10px; }
         .btn-x { background:transparent;border:1px solid rgba(239,68,68,0.4);color:var(--red);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:10px; }
+        .btn-pass { background:transparent;border:1px solid var(--border);color:var(--muted);padding:5px 10px;border-radius:6px;cursor:pointer;font-size:10px;font-family:inherit; }
         
         .main { flex:1;display:flex;flex-direction:column;height:100%;background:var(--bg); }
         .header { height:54px;min-height:54px;padding:0 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:var(--sb); }
@@ -87,9 +88,16 @@
         
         .modal { position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:100; }
         .modal.hidden { display:none; }
-        .modal-b { background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:90%;max-width:360px;text-align:center; }
-        .modal-b button { padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:600; }
+        .modal-b { background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:90%;max-width:400px; }
+        .modal-b h3 { margin-bottom:12px;font-size:16px; }
+        .modal-b button { padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-family:inherit; }
         .btn-p { background:var(--acc);color:white; }
+        .btn-s { background:rgba(255,255,255,0.04);color:var(--text);border:1px solid var(--border); }
+        
+        .form-group { margin-bottom:12px; }
+        .form-group label { display:block;margin-bottom:4px;color:var(--muted);font-size:12px;font-weight:500; }
+        .form-group input { width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;outline:none; }
+        .form-group input:focus { border-color:var(--acc); }
         
         .toast { position:fixed;bottom:70px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:10px;color:white;font-weight:500;z-index:200;font-size:12px;animation:fadeUp .3s;pointer-events:none; }
         .toast.ok { background:var(--green); }
@@ -121,8 +129,9 @@
                     <div class="u-av" id="uAv">U</div>
                     <div><div class="u-nm" id="uNm">User</div><div class="u-rl" id="uRl">user</div></div>
                 </div>
-                <div>
+                <div style="display:flex;flex-direction:column;gap:3px;">
                     <a href="/owner.html" class="btn-o" id="btnOwner">👑</a>
+                    <button class="btn-pass" onclick="showPassModal()">🔑 Pass</button>
                     <button class="btn-x" onclick="logout()">Logout</button>
                 </div>
             </div>
@@ -169,8 +178,26 @@
         </main>
     </div>
 
+    <!-- Limit Modal -->
     <div class="modal hidden" id="limitModal">
-        <div class="modal-b"><span style="font-size:40px;">✨</span><h3>Daily Limit Reached</h3><p>Come back tomorrow! 🌙</p><button class="btn-p" onclick="document.getElementById('limitModal').classList.add('hidden')">Got it</button></div>
+        <div class="modal-b" style="text-align:center;">
+            <span style="font-size:40px;">✨</span><h3>Daily Limit Reached</h3><p style="color:var(--muted);margin-bottom:16px;">Come back tomorrow! 🌙</p>
+            <button class="btn-p" onclick="document.getElementById('limitModal').classList.add('hidden')">Got it</button>
+        </div>
+    </div>
+
+    <!-- Password Modal -->
+    <div class="modal hidden" id="passModal">
+        <div class="modal-b">
+            <h3>🔑 Change Password</h3>
+            <div class="form-group"><label>Current Password</label><input type="password" id="currPass" placeholder="Enter current password"></div>
+            <div class="form-group"><label>New Password (min 6 chars)</label><input type="password" id="newPass" placeholder="Enter new password"></div>
+            <div class="form-group"><label>Confirm New Password</label><input type="password" id="confPass" placeholder="Repeat new password"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+                <button class="btn-s" onclick="closePassModal()">Cancel</button>
+                <button class="btn-p" onclick="changePassword()">Save</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -229,11 +256,7 @@
             el.innerHTML = ais.map(a => `
                 <div class="ai-item ${ai?.id === a.id ? 'active' : ''}" onclick="selectAIById('${a.id}')">
                     <div class="ai-av">${a.avatar_url?.startsWith('http') ? `<img src="${a.avatar_url}" onerror="this.parentElement.textContent='🤖'">` : (a.avatar_url || '🤖')}</div>
-                    <div class="ai-inf">
-                        <div class="n">${a.name}</div>
-                        <div class="d">${a.description || a.status || 'Online'}</div>
-                        ${getBadge(a.visibility)}
-                    </div>
+                    <div class="ai-inf"><div class="n">${a.name}</div><div class="d">${a.description || a.status || 'Online'}</div>${getBadge(a.visibility)}</div>
                 </div>
             `).join('') || '<div style="text-align:center;color:var(--muted);padding:20px;">No AI found</div>';
         }
@@ -344,6 +367,26 @@
         
         async function updLimit() {
             try { const d = await api('/api/user/stats'); document.getElementById('limit').textContent = d.role === 'owner' ? 'Unlimited' : `${d.remaining}/${d.dailyLimit}`; } catch(e) {}
+        }
+        
+        // ==================== PASSWORD ====================
+        function showPassModal() { document.getElementById('passModal').classList.remove('hidden'); document.getElementById('currPass').focus(); }
+        function closePassModal() { document.getElementById('passModal').classList.add('hidden'); document.getElementById('currPass').value=''; document.getElementById('newPass').value=''; document.getElementById('confPass').value=''; }
+        
+        async function changePassword() {
+            const curr = document.getElementById('currPass').value;
+            const newP = document.getElementById('newPass').value;
+            const conf = document.getElementById('confPass').value;
+            
+            if (!curr || !newP || !conf) { toast('All fields required', 'error'); return; }
+            if (newP.length < 6) { toast('New password min 6 chars', 'error'); return; }
+            if (newP !== conf) { toast('Passwords do not match', 'error'); return; }
+            
+            try {
+                await api('/api/auth/password', { method:'PUT', body: JSON.stringify({ currentPassword: curr, newPassword: newP }) });
+                closePassModal();
+                toast('Password changed!', 'success');
+            } catch(e) { toast(e.message, 'error'); }
         }
         
         async function logout() { localStorage.removeItem('lc'); await api('/api/auth/logout', { method:'POST' }); location.href = '/'; }

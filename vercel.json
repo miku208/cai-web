@@ -8,10 +8,6 @@
   ],
   "routes": [
     {
-      "src": "/og-image.png",
-      "dest": "/og-image.png"
-    },
-    {
       "src": "/(.*)",
       "dest": "server.js"
     }
