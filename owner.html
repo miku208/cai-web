@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Owner Dashboard - AI Chat</title>
+    <title>Owner Dashboard - c.ai By MikuHost</title>
     <style>
         :root {
             --bg: #0a0a0f; --sb: #121217; --card: #1a1b23;
@@ -22,6 +22,11 @@
         .dash-nav a.active, .dash-nav button.active { background:rgba(124,58,237,0.2); color:var(--acc); }
         
         .dash-main { flex:1; padding:28px; overflow-y:auto; }
+        
+        /* BANNER */
+        .banner-wrap { margin-bottom:20px; border-radius:16px; overflow:hidden; border:1px solid var(--border); box-shadow:0 4px 20px rgba(108,92,231,0.15); }
+        .banner-wrap img { width:100%; height:auto; display:block; object-fit:cover; aspect-ratio:1200/400; }
+        
         .dash-title { font-size:22px; font-weight:700; margin-bottom:4px; }
         .dash-sub { color:var(--muted); font-size:13px; margin-bottom:20px; }
         
@@ -88,6 +93,7 @@
             .dash-main { padding:14px; }
             .stats { grid-template-columns:1fr 1fr; }
             .form-row { grid-template-columns:1fr; }
+            .banner-wrap img { aspect-ratio:1200/500; }
         }
     </style>
 </head>
@@ -108,6 +114,11 @@
         <main class="dash-main">
             <!-- Dashboard -->
             <div id="page-dashboard">
+                <!-- BANNER -->
+                <div class="banner-wrap">
+                    <img src="https://files.catbox.moe/1euk9c.png" alt="c.ai By MikuHost" loading="eager">
+                </div>
+                
                 <div class="dash-title">Dashboard Overview</div>
                 <div class="dash-sub">Welcome back, Owner</div>
                 <div class="stats">
@@ -120,6 +131,9 @@
             
             <!-- Users -->
             <div id="page-users" class="hidden">
+                <div class="banner-wrap">
+                    <img src="https://files.catbox.moe/1euk9c.png" alt="c.ai By MikuHost" loading="lazy">
+                </div>
                 <div class="dash-title">User Management</div>
                 <div class="dash-sub">Manage all registered users</div>
                 <div class="table-wrap">
@@ -130,6 +144,9 @@
             
             <!-- AI Manager -->
             <div id="page-characters" class="hidden">
+                <div class="banner-wrap">
+                    <img src="https://files.catbox.moe/1euk9c.png" alt="c.ai By MikuHost" loading="lazy">
+                </div>
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
                     <div><div class="dash-title">AI Character Manager</div><div class="dash-sub">Create, edit, and manage AI characters</div></div>
                     <button class="btn btn-p" onclick="showAddForm()">+ Add AI</button>
@@ -141,6 +158,9 @@
             
             <!-- Logs -->
             <div id="page-logs" class="hidden">
+                <div class="banner-wrap">
+                    <img src="https://files.catbox.moe/1euk9c.png" alt="c.ai By MikuHost" loading="lazy">
+                </div>
                 <div class="dash-title">Activity Logs</div>
                 <div class="dash-sub">Recent system activities</div>
                 <div class="table-wrap">
@@ -215,7 +235,7 @@
             return d;
         }
         
-        let allChars = [], premId = null, currentPage = 'dashboard';
+        let allChars = [], premId = null;
         
         (async () => {
             try { const d = await api('/api/auth/me'); if (!d.user || d.user.role !== 'owner') { location.href = '/'; return; } } catch(e) { location.href = '/'; }
@@ -224,7 +244,6 @@
         })();
         
         function switchPage(p) {
-            currentPage = p;
             document.querySelectorAll('.dash-nav button').forEach(b => b.classList.remove('active'));
             document.querySelector(`[data-p="${p}"]`)?.classList.add('active');
             ['dashboard','users','characters','logs'].forEach(x => document.getElementById(`page-${x}`).classList.toggle('hidden', x !== p));
@@ -316,8 +335,7 @@
         }
         
         function editChar(id) {
-            const c = allChars.find(x => x.id === id);
-            if (!c) return;
+            const c = allChars.find(x => x.id === id); if (!c) return;
             document.getElementById('editId').value = c.id;
             document.getElementById('charModalTitle').textContent = 'Edit AI Character';
             document.getElementById('cName').value = c.name || '';
@@ -350,12 +368,7 @@
             const editId = document.getElementById('editId').value;
             const url = editId ? `/api/owner/characters/${editId}` : '/api/owner/characters';
             const method = editId ? 'PUT' : 'POST';
-            
-            try {
-                await api(url, { method, body: JSON.stringify(data) });
-                closeCharModal(); loadChars();
-                toast(editId ? 'Updated!' : 'Created!', 'ok');
-            } catch(e) { toast(e.message, 'err'); }
+            try { await api(url, { method, body: JSON.stringify(data) }); closeCharModal(); loadChars(); toast(editId?'Updated!':'Created!','ok'); } catch(e) { toast(e.message,'err'); }
         }
         
         async function delChar(id) { if(!confirm('Delete?'))return; await api(`/api/owner/characters/${id}`,{method:'DELETE'}); loadChars(); toast('Deleted','ok'); }
