@@ -30,6 +30,48 @@ app.use(session({
     }
 }));
 
+// ============================================
+// ALLOW SOCIAL MEDIA SCRAPERS (OG TAGS)
+// ============================================
+app.use((req, res, next) => {
+    const ua = (req.get('user-agent') || '').toLowerCase();
+    const scrapers = ['facebookexternalhit', 'twitterbot', 'whatsapp', 'telegrambot', 'discordbot', 'slackbot', 'linkedinbot'];
+    
+    if (scrapers.some(s => ua.includes(s))) {
+        // Hanya izinkan GET request ke halaman statis
+        if (req.method === 'GET' && !req.path.startsWith('/api/')) {
+            console.log('✅ Scraper allowed:', ua.substring(0, 50));
+            return next();
+        }
+    }
+    next();
+});
+
+// OG Image endpoint
+app.get('/og-image.png', (req, res) => {
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+            <defs>
+                <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#0a0a0f"/>
+                    <stop offset="100%" style="stop-color:#1a1025"/>
+                </linearGradient>
+            </defs>
+            <rect width="1200" height="630" fill="url(#bg)"/>
+            <circle cx="200" cy="200" r="150" fill="#7c3aed" opacity="0.1"/>
+            <circle cx="1000" cy="450" r="200" fill="#7c3aed" opacity="0.08"/>
+            <rect x="80" y="80" width="1040" height="470" rx="40" fill="#121217" stroke="#7c3aed" stroke-width="3" opacity="0.9"/>
+            <text x="600" y="240" text-anchor="middle" fill="white" font-size="80" font-family="sans-serif" font-weight="bold">c.ai</text>
+            <text x="600" y="310" text-anchor="middle" fill="#a0a0a0" font-size="30" font-family="sans-serif">By MikuHost</text>
+            <text x="600" y="380" text-anchor="middle" fill="#7c3aed" font-size="26" font-family="sans-serif">AI Characters with Personality</text>
+            <rect x="400" y="440" width="400" height="56" rx="28" fill="#7c3aed"/>
+            <text x="600" y="477" text-anchor="middle" fill="white" font-size="24" font-family="sans-serif" font-weight="bold">Start Chatting 💬</text>
+        </svg>
+    `);
+});
+
 // Serve HTML files from root
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/chat.html', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
@@ -352,6 +394,53 @@ app.get('/api/auth/me', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: 'Failed to get user' });
     }
+});
+
+// ============================================
+// CHANGE PASSWORD
+// ============================================
+
+// User ganti password sendiri
+app.put('/api/auth/password', requireAuth, async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Current & new password required' });
+        if (newPassword.length < 6) return res.status(400).json({ error: 'New password min 6 chars' });
+        
+        const { data: user } = await supabase.from('users').select('password_hash').eq('id', req.session.userId).single();
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        
+        const valid = await passwordUtils.verify(currentPassword, user.password_hash);
+        if (!valid) return res.status(401).json({ error: 'Current password wrong' });
+        
+        const newHash = await passwordUtils.hash(newPassword);
+        await supabase.from('users').update({ password_hash: newHash }).eq('id', req.session.userId);
+        
+        await supabase.from('logs').insert({
+            user_id: req.session.userId, action: 'password_changed',
+            details: { message: 'User changed their password' }, ip_address: req.ip
+        });
+        
+        res.json({ success: true, message: 'Password changed' });
+    } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Owner ganti password user manapun
+app.put('/api/owner/users/:userId/password', requireRole('owner'), async (req, res) => {
+    try {
+        const { newPassword } = req.body;
+        if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'New password min 6 chars' });
+        
+        const newHash = await passwordUtils.hash(newPassword);
+        await supabase.from('users').update({ password_hash: newHash }).eq('id', req.params.userId);
+        
+        await supabase.from('logs').insert({
+            user_id: req.session.userId, action: 'owner_changed_password',
+            details: { message: `Owner changed password for user ${req.params.userId}` }, ip_address: req.ip
+        });
+        
+        res.json({ success: true, message: 'Password changed for user' });
+    } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // ============================================
