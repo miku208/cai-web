@@ -3,7 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Chat - Login</title>
+  
+  <!-- OPEN GRAPH -->
+  <meta property="og:title" content="c.ai By MikuHost - AI Characters with Personality">
+  <meta property="og:description" content="Modern AI Chat with WhatsApp-style interface. Chat with Miku and other AI characters, switch moods, and build relationships.">
+  <meta property="og:image" content="https://files.catbox.moe/1euk9c.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:url" content="https://ca1-zeta.vercel.app">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="c.ai By MikuHost">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="c.ai By MikuHost">
+  <meta name="twitter:description" content="Modern AI Chat with WhatsApp-style interface.">
+  <meta name="twitter:image" content="https://files.catbox.moe/1euk9c.png">
+  <meta name="theme-color" content="#0a0a0f">
+  
+  <title>c.ai By MikuHost</title>
   <style>
     :root {
       --bg: #0a0a0a;
@@ -19,11 +36,7 @@
       --input-bg: rgba(255, 255, 255, 0.08);
     }
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -32,11 +45,32 @@
         radial-gradient(ellipse at top left, rgba(108, 92, 231, 0.2), transparent 50%),
         radial-gradient(ellipse at bottom right, rgba(0, 206, 209, 0.15), transparent 50%);
       min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 16px;
       color: var(--text);
+    }
+
+    /* BANNER */
+    .banner {
+      width: 100%;
+      max-width: 420px;
+      margin-bottom: 16px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(108, 92, 231, 0.2);
+      border: 1px solid var(--glass-border);
+    }
+
+    .banner img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: cover;
+      aspect-ratio: 1200 / 630;
     }
 
     .container {
@@ -54,14 +88,9 @@
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     }
 
-    .logo {
-      text-align: center;
-      margin-bottom: 32px;
-    }
-
+    .logo { text-align: center; margin-bottom: 32px; }
     .logo-icon {
-      font-size: 48px;
-      margin-bottom: 8px;
+      font-size: 48px; margin-bottom: 8px;
       animation: float 3s ease-in-out infinite;
     }
 
@@ -71,138 +100,70 @@
     }
 
     .logo h1 {
-      font-size: 28px;
-      font-weight: 700;
+      font-size: 28px; font-weight: 700;
       background: linear-gradient(135deg, #6c5ce7, #00cec9);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
 
-    .logo p {
-      color: var(--text-secondary);
-      font-size: 14px;
-      margin-top: 4px;
-    }
+    .logo p { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
 
     .tabs {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 24px;
-      background: var(--input-bg);
-      border-radius: 12px;
-      padding: 4px;
+      display: flex; gap: 4px; margin-bottom: 24px;
+      background: var(--input-bg); border-radius: 12px; padding: 4px;
     }
 
     .tab-btn {
-      flex: 1;
-      padding: 12px;
-      border: none;
-      background: transparent;
-      color: var(--text-secondary);
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      transition: all 0.3s;
-      font-family: inherit;
+      flex: 1; padding: 12px; border: none; background: transparent;
+      color: var(--text-secondary); border-radius: 10px; cursor: pointer;
+      font-size: 14px; font-weight: 600; transition: all 0.3s; font-family: inherit;
     }
 
-    .tab-btn.active {
-      background: var(--accent);
-      color: white;
-    }
+    .tab-btn.active { background: var(--accent); color: white; }
 
-    .form-group {
-      margin-bottom: 20px;
-    }
-
+    .form-group { margin-bottom: 20px; }
     .form-group label {
-      display: block;
-      margin-bottom: 8px;
-      color: var(--text-secondary);
-      font-size: 13px;
-      font-weight: 500;
+      display: block; margin-bottom: 8px; color: var(--text-secondary);
+      font-size: 13px; font-weight: 500;
     }
 
     .form-group input {
-      width: 100%;
-      padding: 14px 16px;
-      background: var(--input-bg);
-      border: 1px solid var(--glass-border);
-      border-radius: 12px;
-      color: var(--text);
-      font-size: 15px;
-      transition: all 0.3s;
-      font-family: inherit;
-      outline: none;
+      width: 100%; padding: 14px 16px; background: var(--input-bg);
+      border: 1px solid var(--glass-border); border-radius: 12px;
+      color: var(--text); font-size: 15px; transition: all 0.3s;
+      font-family: inherit; outline: none;
     }
 
     .form-group input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15);
+      border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15);
     }
 
     .btn {
-      width: 100%;
-      padding: 14px;
-      border: none;
-      border-radius: 12px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
-      font-family: inherit;
+      width: 100%; padding: 14px; border: none; border-radius: 12px;
+      font-size: 16px; font-weight: 600; cursor: pointer;
+      transition: all 0.3s; font-family: inherit;
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #6c5ce7, #a855f7);
-      color: white;
+      background: linear-gradient(135deg, #6c5ce7, #a855f7); color: white;
     }
 
     .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(108, 92, 231, 0.4);
+      transform: translateY(-2px); box-shadow: 0 8px 24px rgba(108, 92, 231, 0.4);
     }
 
-    .error-msg {
-      color: var(--danger);
-      font-size: 13px;
-      text-align: center;
-      margin-top: 8px;
-      min-height: 20px;
-    }
+    .error-msg { color: var(--danger); font-size: 13px; text-align: center; margin-top: 8px; min-height: 20px; }
+    .form-panel { display: none; }
+    .form-panel.active { display: block; }
 
-    .form-panel {
-      display: none;
-    }
+    .footer-text { text-align: center; margin-top: 16px; color: var(--text-secondary); font-size: 12px; }
 
-    .form-panel.active {
-      display: block;
-    }
-
-    .footer-text {
-      text-align: center;
-      margin-top: 20px;
-      color: var(--text-secondary);
-      font-size: 13px;
-    }
-
-    /* Toast */
     .toast {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 16px 24px;
-      border-radius: 12px;
-      color: white;
-      font-weight: 500;
-      z-index: 9999;
-      animation: slideIn 0.3s ease;
-      font-family: inherit;
-      font-size: 14px;
-      max-width: 350px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      position: fixed; top: 20px; right: 20px; padding: 16px 24px;
+      border-radius: 12px; color: white; font-weight: 500; z-index: 9999;
+      animation: slideIn 0.3s ease; font-family: inherit; font-size: 14px;
+      max-width: 350px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
     }
 
     .toast.success { background: var(--success); }
@@ -214,24 +175,50 @@
       to { transform: translateX(0); opacity: 1; }
     }
 
+    /* BANNER DI BAWAH (MOBILE) */
+    .banner-bottom {
+      display: none;
+      width: 100%;
+      max-width: 420px;
+      margin-top: 16px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(108, 92, 231, 0.2);
+      border: 1px solid var(--glass-border);
+    }
+
+    .banner-bottom img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: cover;
+      aspect-ratio: 1200 / 630;
+    }
+
     @media (max-width: 480px) {
-      .card {
-        padding: 28px 20px;
-        border-radius: 20px;
-      }
-      .logo h1 {
-        font-size: 24px;
-      }
+      .card { padding: 28px 20px; border-radius: 20px; }
+      .logo h1 { font-size: 24px; }
+    }
+
+    /* DI DEVICE KECIL, BANNER PINDAH KE BAWAH */
+    @media (max-height: 700px) {
+      .banner-top { display: none; }
+      .banner-bottom { display: block; }
     }
   </style>
 </head>
 <body>
+  <!-- BANNER ATAS (DESKTOP) -->
+  <div class="banner banner-top">
+    <img src="https://files.catbox.moe/1euk9c.png" alt="c.ai By MikuHost" loading="eager">
+  </div>
+
   <div class="container">
     <div class="card">
       <div class="logo">
         <div class="logo-icon">💬</div>
-        <h1>AI Chat</h1>
-        <p>Chat with AI Characters</p>
+        <h1>c.ai</h1>
+        <p>By MikuHost</p>
       </div>
 
       <div class="tabs">
@@ -239,54 +226,40 @@
         <button class="tab-btn" onclick="switchTab('register')">Register</button>
       </div>
 
-      <!-- Login Form -->
       <div id="login-panel" class="form-panel active">
         <form onsubmit="handleLogin(event)">
-          <div class="form-group">
-            <label>Username</label>
-            <input type="text" id="login-username" placeholder="Enter username" required minlength="3">
-          </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="login-password" placeholder="Enter password" required minlength="6">
-          </div>
+          <div class="form-group"><label>Username</label><input type="text" id="login-username" placeholder="Enter username" required minlength="3"></div>
+          <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="Enter password" required minlength="6"></div>
           <button type="submit" class="btn btn-primary">Login</button>
           <div class="error-msg" id="login-error"></div>
         </form>
       </div>
 
-      <!-- Register Form -->
       <div id="register-panel" class="form-panel">
         <form onsubmit="handleRegister(event)">
-          <div class="form-group">
-            <label>Username</label>
-            <input type="text" id="reg-username" placeholder="Choose username" required minlength="3">
-          </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="reg-password" placeholder="Create password" required minlength="6">
-          </div>
-          <div class="form-group">
-            <label>Confirm Password</label>
-            <input type="password" id="reg-confirm" placeholder="Confirm password" required minlength="6">
-          </div>
+          <div class="form-group"><label>Username</label><input type="text" id="reg-username" placeholder="Choose username" required minlength="3"></div>
+          <div class="form-group"><label>Password</label><input type="password" id="reg-password" placeholder="Create password" required minlength="6"></div>
+          <div class="form-group"><label>Confirm Password</label><input type="password" id="reg-confirm" placeholder="Confirm password" required minlength="6"></div>
           <button type="submit" class="btn btn-primary">Register</button>
           <div class="error-msg" id="reg-error"></div>
         </form>
       </div>
     </div>
-    <div class="footer-text">MikuHost</div>
+    <div class="footer-text">Powered by AI • Secure & Encrypted</div>
+  </div>
+
+  <!-- BANNER BAWAH (MOBILE) -->
+  <div class="banner-bottom">
+    <img src="https://files.catbox.moe/1euk9c.png" alt="c.ai By MikuHost" loading="lazy">
   </div>
 
   <script>
-    // Auth JS (embedded)
     let currentTab = 'login';
 
     function switchTab(tab) {
       currentTab = tab;
       document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.form-panel').forEach(panel => panel.classList.remove('active'));
-      
       if (tab === 'login') {
         document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
         document.getElementById('login-panel').classList.add('active');
@@ -298,116 +271,69 @@
       }
     }
 
-    function showToast(message, type = 'info') {
-      const toast = document.createElement('div');
-      toast.className = `toast ${type}`;
+    function showToast(message, type) {
+      type = type || 'info';
+      var toast = document.createElement('div');
+      toast.className = 'toast ' + type;
       toast.textContent = message;
       document.body.appendChild(toast);
-      
-      setTimeout(() => {
+      setTimeout(function() {
         toast.style.opacity = '0';
         toast.style.transition = 'opacity 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
+        setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300);
       }, 3000);
     }
 
     async function handleLogin(e) {
       e.preventDefault();
-      const username = document.getElementById('login-username').value.trim();
-      const password = document.getElementById('login-password').value;
-      const errorEl = document.getElementById('login-error');
+      var username = document.getElementById('login-username').value.trim();
+      var password = document.getElementById('login-password').value;
+      var errorEl = document.getElementById('login-error');
       errorEl.textContent = '';
-
       try {
-        const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+        var res = await fetch('/api/auth/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username, password: password })
         });
-        
-        const data = await res.json();
-        
-        if (data.error) {
-          errorEl.textContent = data.error;
-          showToast(data.error, 'error');
-          return;
-        }
-        
+        var data = await res.json();
+        if (data.error) { errorEl.textContent = data.error; showToast(data.error, 'error'); return; }
         showToast('Login successful!', 'success');
-        setTimeout(() => {
-          if (data.user.role === 'owner') {
-            window.location.href = '/owner.html';
-          } else {
-            window.location.href = '/chat.html';
-          }
+        setTimeout(function() {
+          window.location.href = data.user && data.user.role === 'owner' ? '/owner.html' : '/chat.html';
         }, 500);
-      } catch (err) {
-        errorEl.textContent = 'Connection error';
-        showToast('Connection error', 'error');
-      }
+      } catch(err) { errorEl.textContent = 'Connection error'; showToast('Connection error', 'error'); }
     }
 
     async function handleRegister(e) {
       e.preventDefault();
-      const username = document.getElementById('reg-username').value.trim();
-      const password = document.getElementById('reg-password').value;
-      const confirm = document.getElementById('reg-confirm').value;
-      const errorEl = document.getElementById('reg-error');
+      var username = document.getElementById('reg-username').value.trim();
+      var password = document.getElementById('reg-password').value;
+      var confirm = document.getElementById('reg-confirm').value;
+      var errorEl = document.getElementById('reg-error');
       errorEl.textContent = '';
-
-      if (password !== confirm) {
-        errorEl.textContent = 'Passwords do not match';
-        return;
-      }
-
-      if (username.length < 3) {
-        errorEl.textContent = 'Username must be at least 3 characters';
-        return;
-      }
-
-      if (password.length < 6) {
-        errorEl.textContent = 'Password must be at least 6 characters';
-        return;
-      }
-
+      if (password !== confirm) { errorEl.textContent = 'Passwords do not match'; return; }
+      if (username.length < 3) { errorEl.textContent = 'Username min 3 chars'; return; }
+      if (password.length < 6) { errorEl.textContent = 'Password min 6 chars'; return; }
       try {
-        const res = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+        var res = await fetch('/api/auth/register', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username, password: password })
         });
-        
-        const data = await res.json();
-        
-        if (data.error) {
-          errorEl.textContent = data.error;
-          showToast(data.error, 'error');
-          return;
-        }
-        
+        var data = await res.json();
+        if (data.error) { errorEl.textContent = data.error; showToast(data.error, 'error'); return; }
         showToast('Registration successful!', 'success');
-        setTimeout(() => {
-          window.location.href = '/chat.html';
-        }, 500);
-      } catch (err) {
-        errorEl.textContent = 'Connection error';
-        showToast('Connection error', 'error');
-      }
+        setTimeout(function() { window.location.href = '/chat.html'; }, 500);
+      } catch(err) { errorEl.textContent = 'Connection error'; showToast('Connection error', 'error'); }
     }
 
-    // Check if already logged in
-    (async () => {
+    (async function() {
       try {
-        const res = await fetch('/api/auth/me');
-        const data = await res.json();
+        var res = await fetch('/api/auth/me');
+        var data = await res.json();
         if (data.user) {
-          if (data.user.role === 'owner') {
-            window.location.href = '/owner.html';
-          } else {
-            window.location.href = '/chat.html';
-          }
+          window.location.href = data.user.role === 'owner' ? '/owner.html' : '/chat.html';
         }
-      } catch (e) {}
+      } catch(e) {}
     })();
   </script>
 </body>
