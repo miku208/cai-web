@@ -147,8 +147,8 @@ const requireRole = (...roles) => {
 // ============================================
 function getLimit(role) {
     if (role === 'owner') return Infinity;
-    if (role === 'premium') return 200;
-    return 50; // Default user
+    if (role === 'premium') return 100;
+    return 15; // Default user
 }
 
 // ============================================
