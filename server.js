@@ -1028,7 +1028,27 @@ app.put('/api/owner/users/:userId', requireRole('owner'), async (req, res) => {
     await supabase.from('users').update(updates).eq('id',req.params.userId);
     res.json({ success:true });
 });
-app.delete('/api/owner/users/:userId', requireRole('owner'), async (req, res) => { if (req.params.userId===req.session.userId) return res.status(400).json({ error:'Cannot delete yourself' }); await supabase.from('users').delete().eq('id',req.params.userId); res.json({ success:true }); });
+app.delete('/api/owner/users/:userId', requireRole('owner'), async (req, res) => {
+    try {
+        if (req.params.userId === req.session.userId) {
+            return res.status(400).json({ error: 'Cannot delete yourself' });
+        }
+        
+        // Hapus data terkait dulu (cascade manual)
+        await supabase.from('email_verifications').delete().eq('user_id', req.params.userId);
+        await supabase.from('messages').delete().eq('user_id', req.params.userId);
+        await supabase.from('chats').delete().eq('user_id', req.params.userId);
+        await supabase.from('logs').delete().eq('user_id', req.params.userId);
+        
+        // Baru hapus user
+        const { error } = await supabase.from('users').delete().eq('id', req.params.userId);
+        if (error) throw error;
+        
+        res.json({ success: true, message: 'User deleted' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 app.get('/api/owner/characters', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('characters').select('*, ai_packages(name)').order('created_at',{ascending:false}); res.json({ characters:data }); });
 app.post('/api/owner/characters', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('characters').insert({...req.body,created_by:req.session.userId}).select().single(); res.json({ character:data }); });
 app.put('/api/owner/characters/:charId', requireRole('owner'), async (req, res) => { await supabase.from('characters').update(req.body).eq('id',req.params.charId); res.json({ success:true }); });
