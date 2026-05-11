@@ -3,6 +3,7 @@
 // Default: ChatEverywhere + Context History
 // Gemini: with retry & fallback
 // Neosantara: OpenAI-compatible API
+// Ryuu: Gemini API with text+prompt structure
 // Gender-based Prompt + Adult Mood System
 // Email OTP Verification via Resend
 // Login: username OR email
@@ -192,6 +193,64 @@ async function sendOTPEmail(email, otp) {
 // AI CALLERS
 // ============================================
 
+// Ryuu API (Gemini dengan struktur text + prompt terpisah)
+async function callRyuuAPI(systemPrompt, historyMessages, userMessage, apiKey, modelName) {
+    let contextHistory = '';
+    if (historyMessages && historyMessages.length > 0) {
+        const recentHistory = historyMessages.slice(-6);
+        contextHistory = recentHistory.map(m => 
+            `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`
+        ).join('\n');
+    }
+    
+    const textWithContext = contextHistory 
+        ? `${contextHistory}\nUser: ${userMessage}` 
+        : userMessage;
+    
+    console.log(`📤 Ryuu API:`);
+    console.log(`   Model: ${modelName}`);
+    console.log(`   Prompt length: ${systemPrompt.length} chars`);
+    console.log(`   Text length: ${textWithContext.length} chars`);
+    
+    const response = await fetch('https://api.ryuu-dev.my.id/ai/gemini', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-RYUU-APIKEY': apiKey
+        },
+        body: JSON.stringify({
+            text: textWithContext,
+            prompt: systemPrompt,
+            model: modelName || 'gemini-3.1-flash-lite-preview'
+        })
+    });
+    
+    if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Ryuu ${response.status}: ${err.substring(0, 200)}`);
+    }
+    
+    const data = await response.json();
+    console.log('📦 Ryuu response:', JSON.stringify(data).substring(0, 200));
+    
+    // Ryuu API specific: { success: true, result: { response: "..." } }
+    if (data.result?.response) return data.result.response;
+    if (data.result?.text) return data.result.text;
+    if (data.result?.message) return data.result.message;
+    
+    // Generic fallbacks
+    if (data.response) return data.response;
+    if (data.text) return data.text;
+    if (data.message) return data.message;
+    if (data.candidates?.[0]?.content?.parts?.[0]?.text) return data.candidates[0].content.parts[0].text;
+    if (typeof data === 'string') return data;
+    
+    const firstValue = Object.values(data).find(v => typeof v === 'string');
+    if (firstValue) return firstValue;
+    
+    return JSON.stringify(data);
+}
+
 // ChatEverywhere API
 async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
     const messages = [{ role: 'system', content: systemPrompt }];
@@ -239,7 +298,6 @@ async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
     
     const contentType = response.headers.get('content-type') || '';
     
-    // Try JSON first
     if (contentType.includes('application/json')) {
         try {
             const data = await response.json();
@@ -256,7 +314,6 @@ async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
         }
     }
     
-    // Handle plain text response
     const text = await response.text();
     if (text && text.trim()) {
         console.log('📝 ChatEverywhere plain text:', text.substring(0, 100));
@@ -284,7 +341,6 @@ async function callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey)
     
     contents.push({ role: 'user', parts: [{ text: userMessage }] });
     
-    // Retry up to 3 times with exponential backoff
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
             console.log(`📝 Gemini attempt ${attempt}: ${contents.length} contents`);
@@ -508,6 +564,31 @@ async function callAI(systemPrompt, historyMessages, userMessage, characterEndpo
         }
     }
     
+    // RYUU API PATH
+    if (endpoint && endpoint.includes('ryuu')) {
+        const key = apiKey || (endpoint.includes(':') ? endpoint.split(':')[1] : null);
+        if (!key) throw new Error('Ryuu API key required (set in package api_key or endpoint as ryuu:APIKEY)');
+        try {
+            console.log('🤖 Calling: Ryuu API...');
+            const modelName = charModelName || 'gemini-3.1-flash-lite-preview';
+            const result = await callRyuuAPI(systemPrompt, historyMessages, userMessage, key, modelName);
+            if (result && result.trim()) { 
+                console.log('✅ Success: Ryuu'); 
+                return { response: result.trim(), source: 'Ryuu Gemini' }; 
+            }
+        } catch (error) {
+            console.log('❌ Ryuu failed:', error.message);
+            try { 
+                console.log('🔄 Falling back to ChatEverywhere...');
+                const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage); 
+                if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; 
+            } catch(fb) {
+                console.log('❌ Fallback also failed:', fb.message);
+            }
+            throw error;
+        }
+    }
+    
     // CHATEVERYWHERE PATH
     if (!endpoint || endpoint === 'chateverywhere' || endpoint.includes('chateverywhere')) {
         try {
@@ -592,7 +673,6 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(400).json({ error: 'Password must be at least 6 characters' });
         }
 
-        // Cek username & email unik
         const { data: existingUser } = await supabase.from('users').select('id').eq('username', username).single();
         if (existingUser) return res.status(400).json({ error: 'Username already taken' });
         
@@ -622,7 +702,6 @@ app.post('/api/auth/register', async (req, res) => {
         
         if (error) throw error;
 
-        // Generate OTP & kirim email
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         await supabase.from('email_verifications').insert({
             user_id: newUser.id,
@@ -633,7 +712,6 @@ app.post('/api/auth/register', async (req, res) => {
         
         sendOTPEmail(userEmail, otp).catch(e => console.log('OTP send failed:', e.message));
 
-        // Log registration
         await supabase.from('logs').insert({
             user_id: newUser.id,
             action: 'user_registered',
@@ -652,7 +730,6 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-// Verify OTP
 app.post('/api/auth/verify-otp', async (req, res) => {
     try {
         const { email, otp } = req.body;
@@ -678,7 +755,6 @@ app.post('/api/auth/verify-otp', async (req, res) => {
     } catch(e) { res.status(500).json({ error: 'Verification failed' }); }
 });
 
-// Resend OTP
 app.post('/api/auth/resend-otp', async (req, res) => {
     try {
         const { email } = req.body;
@@ -709,7 +785,6 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(400).json({ error: 'Username and password are required' });
         }
 
-        // Login dengan username ATAU email
         const { data: user, error } = await supabase
             .from('users')
             .select('*')
@@ -737,20 +812,17 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Check premium expiration
         if (user.role === 'premium' && user.premium_expired_at && new Date(user.premium_expired_at) < new Date()) {
             await supabase.from('users').update({ role: 'user', premium_expired_at: null }).eq('id', user.id);
             user.role = 'user';
         }
 
-        // Reset daily count if new day
         const today = new Date().toISOString().split('T')[0];
         if (user.last_message_date !== today) {
             await supabase.from('users').update({ daily_message_count: 0, last_message_date: today }).eq('id', user.id);
             user.daily_message_count = 0;
         }
 
-        // Log login
         await supabase.from('logs').insert({
             user_id: user.id,
             action: 'user_login',
@@ -758,7 +830,6 @@ app.post('/api/auth/login', async (req, res) => {
             ip_address: req.ip
         });
 
-        // Set session
         req.session.userId = user.id;
         req.session.userRole = user.role;
         req.session.username = user.username;
@@ -800,13 +871,11 @@ app.get('/api/auth/me', async (req, res) => {
     } catch (error) { res.status(500).json({ error: 'Failed to get user data' }); }
 });
 
-// Get settings
 app.get('/api/settings', async (req, res) => {
     const { data } = await supabase.from('settings').select('*').eq('id', 1).single();
     res.json({ settings: data });
 });
 
-// Update settings (owner only)
 app.put('/api/settings', requireRole('owner'), async (req, res) => {
     await supabase.from('settings').update(req.body).eq('id', 1);
     res.json({ success: true });
@@ -929,7 +998,6 @@ app.delete('/api/chats/:chatId', requireAuth, async (req, res) => {
     } catch (error) { res.status(500).json({ error: 'Failed to delete chat' }); }
 });
 
-// Clear chat history
 app.delete('/api/chats/:id/history', requireAuth, async (req, res) => {
     await supabase.from('messages').delete().eq('chat_id', req.params.id);
     await supabase.from('chats').update({ relationship_level: 0, updated_at: new Date() }).eq('id', req.params.id).eq('user_id', req.session.userId);
@@ -981,7 +1049,6 @@ app.post('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
     } catch (e) { console.error('Message error:', e); res.status(500).json({ error: e.message }); }
 });
 
-// Update chat mood
 app.put('/api/chats/:chatId/mood', requireAuth, async (req, res) => {
     try {
         const { mood } = req.body;
@@ -1034,13 +1101,11 @@ app.delete('/api/owner/users/:userId', requireRole('owner'), async (req, res) =>
             return res.status(400).json({ error: 'Cannot delete yourself' });
         }
         
-        // Hapus data terkait dulu (cascade manual)
         await supabase.from('email_verifications').delete().eq('user_id', req.params.userId);
         await supabase.from('messages').delete().eq('user_id', req.params.userId);
         await supabase.from('chats').delete().eq('user_id', req.params.userId);
         await supabase.from('logs').delete().eq('user_id', req.params.userId);
         
-        // Baru hapus user
         const { error } = await supabase.from('users').delete().eq('id', req.params.userId);
         if (error) throw error;
         
@@ -1065,7 +1130,7 @@ if (process.env.NODE_ENV !== 'production') {
         console.log(`📱 http://localhost:${PORT}`);
         console.log(`📧 Email OTP Verification: ON`);
         console.log(`🔑 Login: username OR email`);
-        console.log(`🤖 ChatEverywhere + Gemini + Neosantara + Custom`);
+        console.log(`🤖 ChatEverywhere + Gemini + Neosantara + Ryuu + Custom`);
         console.log('============================================');
     });
 }
