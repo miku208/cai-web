@@ -19,7 +19,7 @@
   <meta name="twitter:description" content="Modern AI Chat with WhatsApp-style interface.">
   <meta name="twitter:image" content="https://cdn.aceimg.com/27a9dbe8f.jpg">
   <meta name="theme-color" content="#0a0a0f">
-  <meta name="description" content="c.ai By MikuHost - Free AI Chat with multiple characters, mood system, and personality.">
+  <meta name="description" content="c.ai By MikuHost - Free AI Chat with multiple characters, mood system, and personality. Email verification required.">
   
   <title>c.ai By MikuHost - Free AI Chat</title>
   <style>
@@ -117,8 +117,10 @@
     }
     .btn-primary { background: linear-gradient(135deg, #6c5ce7, #a855f7); color: white; }
     .btn-primary:active { transform: scale(0.98); }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: var(--text); border: 1px solid var(--glass-border); margin-top: 8px; }
 
     .error-msg { color: var(--danger); font-size: 12px; text-align: center; margin-top: 6px; min-height: 18px; }
+    .success-msg { color: var(--success); font-size: 12px; text-align: center; margin-top: 6px; min-height: 18px; }
     .form-panel { display: none; }
     .form-panel.active { display: block; }
 
@@ -199,6 +201,25 @@
 
     .banner-bottom { display: none; }
 
+    /* OTP Modal */
+    .otp-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+      display: flex; align-items: center; justify-content: center; z-index: 10000;
+    }
+    .otp-modal-overlay.hidden { display: none; }
+    .otp-modal {
+      background: var(--card-bg); border: 1px solid var(--glass-border);
+      border-radius: 20px; padding: 28px 24px; width: 90%; max-width: 380px; text-align: center;
+    }
+    .otp-modal h3 { margin-bottom: 6px; }
+    .otp-modal p { color: var(--text-secondary); font-size: 12px; margin-bottom: 16px; }
+    .otp-input { 
+      width: 100%; padding: 14px; text-align: center; font-size: 24px; letter-spacing: 8px;
+      background: var(--input-bg); border: 1px solid var(--glass-border);
+      border-radius: 12px; color: var(--text); font-family: monospace; outline: none;
+    }
+    .otp-input:focus { border-color: var(--accent); }
+
     @media (max-width: 480px) {
       .card { padding: 22px 16px; border-radius: 20px; }
       .logo h1 { font-size: 20px; }
@@ -235,7 +256,7 @@
 
       <div id="login-panel" class="form-panel active">
         <form onsubmit="handleLogin(event)">
-          <div class="form-group"><label>Username</label><input type="text" id="login-username" placeholder="Enter username" required minlength="3"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="login-username" placeholder="Enter your email" required></div>
           <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="Enter password" required minlength="6"></div>
           <button type="submit" class="btn btn-primary">Login</button>
           <div class="error-msg" id="login-error"></div>
@@ -244,7 +265,7 @@
 
       <div id="register-panel" class="form-panel">
         <form onsubmit="handleRegister(event)">
-          <div class="form-group"><label>Username</label><input type="text" id="reg-username" placeholder="Choose username" required minlength="3"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="reg-username" placeholder="Enter your email" required></div>
           <div class="form-group"><label>Password</label><input type="password" id="reg-password" placeholder="Create password" required minlength="6"></div>
           <div class="form-group"><label>Confirm Password</label><input type="password" id="reg-confirm" placeholder="Confirm password" required minlength="6"></div>
           <div class="form-group">
@@ -257,6 +278,7 @@
           </div>
           <button type="submit" class="btn btn-primary">Register</button>
           <div class="error-msg" id="reg-error"></div>
+          <div class="success-msg" id="reg-success"></div>
         </form>
       </div>
     </div>
@@ -270,9 +292,7 @@
         <li><strong>💕 Relationship</strong> — Bangun relationship level 0-100 dengan AI</li>
         <li><strong>👫 Gender Detection</strong> — AI otomatis menyesuaikan sikap berdasarkan gender kamu</li>
         <li><strong>🔞 Adult Mode</strong> — Khusus Premium/Owner, unlock percakapan tanpa batas</li>
-        <li><strong>⚤ Ganti Gender</strong> — Bisa ubah gender kapan saja di menu chat</li>
-        <li><strong>🔑 Ganti Password</strong> — Amankan akunmu</li>
-        <li><strong>🗑️ Clear History</strong> — Reset percakapan kapan saja</li>
+        <li><strong>📧 Email Verification</strong> — Akun aman dengan verifikasi OTP</li>
       </ul>
     </div>
 
@@ -293,8 +313,22 @@
     <img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai By MikuHost" loading="lazy">
   </div>
 
+  <!-- OTP Modal -->
+  <div class="otp-modal-overlay hidden" id="otpModal">
+    <div class="otp-modal">
+      <h3>📧 Verify Your Email</h3>
+      <p>We've sent a 6-digit code to <strong id="otpEmail"></strong></p>
+      <input type="text" class="otp-input" id="otpInput" placeholder="000000" maxlength="6" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      <div class="error-msg" id="otp-error"></div>
+      <button class="btn btn-primary" onclick="verifyOTP()" style="margin-top:12px;">Verify</button>
+      <button class="btn btn-secondary" onclick="resendOTP()">Resend OTP</button>
+      <button class="btn btn-secondary" onclick="closeOTPModal()">Cancel</button>
+    </div>
+  </div>
+
   <script>
     var currentTab = 'login';
+    var otpEmail = '';
 
     function switchTab(tab) {
       currentTab = tab;
@@ -310,6 +344,7 @@
         btns[1].classList.add('active');
         document.getElementById('register-panel').classList.add('active');
         document.getElementById('reg-error').textContent = '';
+        document.getElementById('reg-success').textContent = '';
       }
     }
 
@@ -326,19 +361,78 @@
       }, 3000);
     }
 
+    function openOTPModal(email) {
+      otpEmail = email;
+      document.getElementById('otpEmail').textContent = email;
+      document.getElementById('otpInput').value = '';
+      document.getElementById('otp-error').textContent = '';
+      document.getElementById('otpModal').classList.remove('hidden');
+      document.getElementById('otpInput').focus();
+    }
+
+    function closeOTPModal() {
+      document.getElementById('otpModal').classList.add('hidden');
+      otpEmail = '';
+    }
+
+    async function verifyOTP() {
+      var otp = document.getElementById('otpInput').value.trim();
+      var errorEl = document.getElementById('otp-error');
+      errorEl.textContent = '';
+      
+      if (!otp || otp.length !== 6) { errorEl.textContent = 'Please enter 6-digit OTP'; return; }
+      
+      try {
+        var res = await fetch('/api/auth/verify-otp', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: otpEmail, otp: otp })
+        });
+        var data = await res.json();
+        if (data.error) { errorEl.textContent = data.error; return; }
+        
+        closeOTPModal();
+        showToast('Email verified! You can now login.', 'success');
+        switchTab('login');
+      } catch(err) { errorEl.textContent = 'Connection error'; }
+    }
+
+    async function resendOTP() {
+      var errorEl = document.getElementById('otp-error');
+      errorEl.textContent = '';
+      
+      try {
+        var res = await fetch('/api/auth/resend-otp', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: otpEmail })
+        });
+        var data = await res.json();
+        if (data.error) { errorEl.textContent = data.error; return; }
+        showToast('OTP resent! Check your inbox.', 'success');
+      } catch(err) { errorEl.textContent = 'Connection error'; }
+    }
+
     async function handleLogin(e) {
       e.preventDefault();
       var username = document.getElementById('login-username').value.trim();
       var password = document.getElementById('login-password').value;
       var errorEl = document.getElementById('login-error');
       errorEl.textContent = '';
+      
       try {
         var res = await fetch('/api/auth/login', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: username, password: password })
         });
         var data = await res.json();
+        
+        // Cek perlu OTP
+        if (data.error === 'Email not verified. Please check your inbox.' || data.requireOTP) {
+          openOTPModal(data.email || username);
+          return;
+        }
+        
         if (data.error) { errorEl.textContent = data.error; showToast(data.error, 'error'); return; }
+        
         showToast('Login successful!', 'success');
         setTimeout(function() {
           window.location.href = data.user && data.user.role === 'owner' ? '/owner' : '/chat';
@@ -353,20 +447,30 @@
       var confirm = document.getElementById('reg-confirm').value;
       var gender = document.getElementById('reg-gender').value;
       var errorEl = document.getElementById('reg-error');
+      var successEl = document.getElementById('reg-success');
       errorEl.textContent = '';
+      successEl.textContent = '';
+      
       if (password !== confirm) { errorEl.textContent = 'Passwords do not match'; return; }
-      if (username.length < 3) { errorEl.textContent = 'Username min 3 chars'; return; }
       if (password.length < 6) { errorEl.textContent = 'Password min 6 chars'; return; }
       if (!gender) { errorEl.textContent = 'Please select your gender'; return; }
+      
       try {
         var res = await fetch('/api/auth/register', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: username, password: password, gender: gender })
         });
         var data = await res.json();
+        
         if (data.error) { errorEl.textContent = data.error; showToast(data.error, 'error'); return; }
-        showToast('Registration successful!', 'success');
-        setTimeout(function() { window.location.href = '/chat'; }, 400);
+        
+        if (data.requireOTP) {
+          successEl.textContent = 'Registration successful! Check your email for OTP.';
+          openOTPModal(username);
+        } else {
+          showToast('Registration successful!', 'success');
+          setTimeout(function() { window.location.href = '/chat'; }, 400);
+        }
       } catch(err) { errorEl.textContent = 'Connection error'; showToast('Connection error', 'error'); }
     }
 
