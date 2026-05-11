@@ -254,18 +254,21 @@
         <button class="tab-btn" onclick="switchTab('register')">Register</button>
       </div>
 
+      <!-- Login Form -->
       <div id="login-panel" class="form-panel active">
         <form onsubmit="handleLogin(event)">
-          <div class="form-group"><label>Email</label><input type="email" id="login-username" placeholder="Enter your email" required></div>
+          <div class="form-group"><label>Username or Email</label><input type="text" id="login-username" placeholder="Enter username or email" required></div>
           <div class="form-group"><label>Password</label><input type="password" id="login-password" placeholder="Enter password" required minlength="6"></div>
           <button type="submit" class="btn btn-primary">Login</button>
           <div class="error-msg" id="login-error"></div>
         </form>
       </div>
 
+      <!-- Register Form -->
       <div id="register-panel" class="form-panel">
         <form onsubmit="handleRegister(event)">
-          <div class="form-group"><label>Email</label><input type="email" id="reg-username" placeholder="Enter your email" required></div>
+          <div class="form-group"><label>Username</label><input type="text" id="reg-username" placeholder="Choose username" required minlength="3"></div>
+          <div class="form-group"><label>Email</label><input type="email" id="reg-email" placeholder="Enter your email" required></div>
           <div class="form-group"><label>Password</label><input type="password" id="reg-password" placeholder="Create password" required minlength="6"></div>
           <div class="form-group"><label>Confirm Password</label><input type="password" id="reg-confirm" placeholder="Confirm password" required minlength="6"></div>
           <div class="form-group">
@@ -302,8 +305,7 @@
       <h3>Support This Project</h3>
       <p>Website ini GRATIS selamanya. API key & server butuh biaya bulanan. Bantu kami tetap hidup! 💜</p>
       <a href="/qris" class="btn-support">☕ Support via QRIS</a>
-      <div class="support-links">
-      </div>
+      <div class="support-links"></div>
     </div>
 
     <div class="footer-text">MikuHost</div>
@@ -443,6 +445,7 @@
     async function handleRegister(e) {
       e.preventDefault();
       var username = document.getElementById('reg-username').value.trim();
+      var email = document.getElementById('reg-email').value.trim();
       var password = document.getElementById('reg-password').value;
       var confirm = document.getElementById('reg-confirm').value;
       var gender = document.getElementById('reg-gender').value;
@@ -452,13 +455,14 @@
       successEl.textContent = '';
       
       if (password !== confirm) { errorEl.textContent = 'Passwords do not match'; return; }
+      if (username.length < 3) { errorEl.textContent = 'Username min 3 chars'; return; }
       if (password.length < 6) { errorEl.textContent = 'Password min 6 chars'; return; }
       if (!gender) { errorEl.textContent = 'Please select your gender'; return; }
       
       try {
         var res = await fetch('/api/auth/register', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: username, password: password, gender: gender })
+          body: JSON.stringify({ username: username, email: email, password: password, gender: gender })
         });
         var data = await res.json();
         
@@ -466,7 +470,7 @@
         
         if (data.requireOTP) {
           successEl.textContent = 'Registration successful! Check your email for OTP.';
-          openOTPModal(username);
+          openOTPModal(email || username);
         } else {
           showToast('Registration successful!', 'success');
           setTimeout(function() { window.location.href = '/chat'; }, 400);

@@ -54,6 +54,8 @@
         .badge.premium-only { background:rgba(245,158,11,0.2);color:#fbbf24; }
         .badge.male { background:rgba(59,130,246,0.2);color:#60a5fa; }
         .badge.female { background:rgba(236,72,153,0.2);color:#f472b6; }
+        .badge.verified { background:rgba(34,197,94,0.2);color:#4ade80; }
+        .badge.unverified { background:rgba(245,158,11,0.2);color:#fbbf24; }
         
         .btn { padding:10px 20px; border-radius:10px; border:none; cursor:pointer; font-family:inherit; font-weight:600; font-size:13px; }
         .btn-p { background:var(--acc);color:white; }
@@ -64,6 +66,7 @@
         .btn-sm.s { background:var(--green);color:white; }
         .btn-sm.w { background:var(--warn);color:black; }
         .btn-sm.r { background:rgba(124,58,237,0.2);color:#a78bfa; }
+        .btn-sm.v { background:rgba(34,197,94,0.2);color:#4ade80; }
         
         .form-g { margin-bottom:14px; }
         .form-g label { display:block; margin-bottom:4px; color:var(--muted); font-size:12px; font-weight:500; }
@@ -140,7 +143,7 @@
                 <div class="dash-sub">Manage all registered users</div>
                 <div class="table-wrap">
                     <div class="table-head"><span>All Users</span><button class="btn-sm p" onclick="loadUsers()">🔄 Refresh</button></div>
-                    <div class="table-scroll"><table><thead><tr><th>Username</th><th>Role</th><th>Messages</th><th>Premium Exp</th><th>Status</th><th>Actions</th></tr></thead><tbody id="usersBody"><tr><td colspan="6" class="text-c">Loading...</td></tr></tbody></table></div>
+                    <div class="table-scroll"><table><thead><tr><th>Username</th><th>Role</th><th>Gender</th><th>Verified</th><th>Msgs</th><th>Premium</th><th>Actions</th></tr></thead><tbody id="usersBody"><tr><td colspan="7" class="text-c">Loading...</td></tr></tbody></table></div>
                 </div>
             </div>
             
@@ -174,6 +177,7 @@
                 <div class="dash-title">Settings</div>
                 <div class="dash-sub">Manage website settings</div>
                 
+                <!-- QRIS Settings -->
                 <div class="table-wrap">
                     <div class="table-head"><span>QRIS Image</span></div>
                     <div style="padding:20px;">
@@ -184,9 +188,25 @@
                         <div style="text-align:center;margin:12px 0;">
                             <img id="qrisPreview" src="" class="qris-preview" onerror="this.style.display='none'" alt="QRIS Preview">
                         </div>
-                        <button class="btn btn-p" onclick="saveSettings()" style="width:auto;">💾 Save QRIS</button>
                     </div>
                 </div>
+                
+                <!-- Email OTP Settings -->
+                <div class="table-wrap" style="margin-top:20px;">
+                    <div class="table-head"><span>📧 Email OTP Settings (Resend)</span></div>
+                    <div style="padding:20px;">
+                        <div class="form-g">
+                            <label>Resend API Key</label>
+                            <input type="text" id="resendApiKey" placeholder="re_xxx...">
+                        </div>
+                        <div class="form-g">
+                            <label>Sender Email (must be verified in Resend)</label>
+                            <input type="email" id="senderEmail" placeholder="noreply@yourdomain.com">
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-p" onclick="saveSettings()" style="margin-top:16px;">💾 Save All Settings</button>
             </div>
             
             <!-- Logs -->
@@ -300,7 +320,7 @@
             try {
                 var d = await api('/api/owner/users');
                 document.getElementById('usersBody').innerHTML = (d.users||[]).map(function(u) {
-                    return '<tr><td><strong>' + u.username + '</strong></td><td><span class="badge ' + u.role + '">' + u.role + '</span>' + (u.is_banned?' <span class="badge banned">banned</span>':'') + '</td><td>' + (u.daily_message_count||0) + ' / ' + (u.last_message_date||'-') + '</td><td>' + (u.premium_expired_at?new Date(u.premium_expired_at).toLocaleDateString():'-') + '</td><td>' + (u.is_banned?'❌':'✅') + '</td><td>' + (!u.is_banned?'<button class="btn-sm d" onclick="banUser(\''+u.id+'\')">Ban</button>':'<button class="btn-sm s" onclick="unbanUser(\''+u.id+'\')">Unban</button>') + (u.role!=='premium'?'<button class="btn-sm w" onclick="showPrem(\''+u.id+'\',\''+u.username+'\')">⭐ Premium</button>':'<button class="btn-sm p" onclick="setRole(\''+u.id+'\',\'user\')">👤 User</button>') + '<button class="btn-sm r" onclick="resetDaily(\''+u.id+'\')">🔄 Reset</button>' + (u.role!=='owner'?'<button class="btn-sm d" onclick="delUser(\''+u.id+'\')">🗑️</button>':'') + '</td></tr>';
+                    return '<tr><td><strong>' + u.username + '</strong></td><td><span class="badge ' + u.role + '">' + u.role + '</span>' + (u.is_banned?' <span class="badge banned">banned</span>':'') + '</td><td><span class="badge '+(u.gender==='male'?'male':'female')+'">'+(u.gender==='male'?'♂':'♀')+'</span></td><td><span class="badge '+(u.verified?'verified':'unverified')+'">'+(u.verified?'✅':'⚠️')+'</span></td><td>' + (u.daily_message_count||0) + '</td><td>' + (u.premium_expired_at?new Date(u.premium_expired_at).toLocaleDateString():'-') + '</td><td>' + (!u.is_banned?'<button class="btn-sm d" onclick="banUser(\''+u.id+'\')">Ban</button>':'<button class="btn-sm s" onclick="unbanUser(\''+u.id+'\')">Unban</button>') + (u.role!=='premium'?'<button class="btn-sm w" onclick="showPrem(\''+u.id+'\',\''+u.username+'\')">⭐ Premium</button>':'<button class="btn-sm p" onclick="setRole(\''+u.id+'\',\'user\')">👤 User</button>') + (!u.verified?'<button class="btn-sm v" onclick="verifyUser(\''+u.id+'\')">✅ Verify</button>':'') + '<button class="btn-sm r" onclick="resetDaily(\''+u.id+'\')">🔄 Reset</button>' + (u.role!=='owner'?'<button class="btn-sm d" onclick="delUser(\''+u.id+'\')">🗑️</button>':'') + '</td></tr>';
                 }).join('');
             } catch(e) {}
         }
@@ -341,26 +361,32 @@
                 var d = await api('/api/settings');
                 if (d.settings) {
                     document.getElementById('qrisUrl').value = d.settings.qris_url || '';
-                    var preview = document.getElementById('qrisPreview');
-                    preview.src = d.settings.qris_url || '';
-                    preview.style.display = d.settings.qris_url ? 'block' : 'none';
+                    document.getElementById('resendApiKey').value = d.settings.resend_api_key || '';
+                    document.getElementById('senderEmail').value = d.settings.sender_email || '';
+                    var p = document.getElementById('qrisPreview');
+                    p.src = d.settings.qris_url || '';
+                    p.style.display = d.settings.qris_url ? 'block' : 'none';
                 }
             } catch(e) {}
         }
         
         async function saveSettings() {
-            var qris_url = document.getElementById('qrisUrl').value;
-            await api('/api/settings', { method:'PUT', body: JSON.stringify({ qris_url: qris_url }) });
-            document.getElementById('qrisPreview').src = qris_url;
-            document.getElementById('qrisPreview').style.display = qris_url ? 'block' : 'none';
-            toast('QRIS saved!', 'ok');
+            await api('/api/settings', { method:'PUT', body: JSON.stringify({
+                qris_url: document.getElementById('qrisUrl').value,
+                resend_api_key: document.getElementById('resendApiKey').value,
+                sender_email: document.getElementById('senderEmail').value
+            }) });
+            document.getElementById('qrisPreview').src = document.getElementById('qrisUrl').value;
+            document.getElementById('qrisPreview').style.display = document.getElementById('qrisUrl').value ? 'block' : 'none';
+            toast('Settings saved!', 'ok');
         }
         
         async function updUser(id, data) { await api('/api/owner/users/'+id, { method:'PUT', body:JSON.stringify(data) }); loadUsers(); }
-        function banUser(id) { updUser(id, { is_banned: true }); toast('Banned','ok'); }
-        function unbanUser(id) { updUser(id, { is_banned: false }); toast('Unbanned','ok'); }
-        function setRole(id, role) { updUser(id, { role: role }); toast('Role updated','ok'); }
-        function resetDaily(id) { updUser(id, { daily_message_count: 0, last_message_date: new Date().toISOString().split('T')[0] }); toast('Daily reset!','ok'); }
+        function banUser(id) { updUser(id, { is_banned: true }); }
+        function unbanUser(id) { updUser(id, { is_banned: false }); }
+        function setRole(id, role) { updUser(id, { role: role }); }
+        function verifyUser(id) { updUser(id, { verified: true }); toast('User verified!', 'ok'); }
+        function resetDaily(id) { updUser(id, { daily_message_count: 0, last_message_date: new Date().toISOString().split('T')[0] }); toast('Daily reset!', 'ok'); }
         async function delUser(id) { if(!confirm('Delete permanently?'))return; await api('/api/owner/users/'+id,{method:'DELETE'}); loadUsers(); toast('Deleted','ok'); }
         
         function showPrem(id, name) { premId = id; document.getElementById('premUser').textContent = name; document.getElementById('premModal').classList.remove('hidden'); }
@@ -448,11 +474,7 @@
         
         async function savePkg(e) {
             e.preventDefault();
-            var data = {
-                name: document.getElementById('pkgName').value,
-                url: document.getElementById('pkgUrl').value,
-                api_key: document.getElementById('pkgApiKey').value || null
-            };
+            var data = { name: document.getElementById('pkgName').value, url: document.getElementById('pkgUrl').value, api_key: document.getElementById('pkgApiKey').value || null };
             var editId = document.getElementById('pkgEditId').value;
             var url = editId ? '/api/owner/packages/'+editId : '/api/owner/packages';
             var method = editId ? 'PUT' : 'POST';

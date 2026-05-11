@@ -1,9 +1,11 @@
 // ============================================
-// AI CHAT BACKEND SERVER - FINAL WITH CONTEXT + GENDER + ADULT + NEOSANTARA
+// AI CHAT BACKEND SERVER - FINAL WITH CONTEXT + GENDER + ADULT + NEOSANTARA + EMAIL OTP
 // Default: ChatEverywhere + Context History
 // Gemini: with retry & fallback
 // Neosantara: OpenAI-compatible API
 // Gender-based Prompt + Adult Mood System
+// Email OTP Verification via Resend
+// Login: username OR email
 // ============================================
 
 const express = require('express');
@@ -88,6 +90,7 @@ app.get('/owner.html', (req, res) => res.sendFile(path.join(__dirname, 'owner.ht
 app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
 app.get('/owner', (req, res) => res.sendFile(path.join(__dirname, 'owner.html')));
 app.get('/qris', (req, res) => res.sendFile(path.join(__dirname, 'qris.html')));
+app.get('/verify', (req, res) => res.sendFile(path.join(__dirname, 'verify.html')));
 
 // ============================================
 // PASSWORD UTILS
@@ -145,6 +148,44 @@ function getLimit(role) {
     if (role === 'owner') return Infinity;
     if (role === 'premium') return 200;
     return 50; // Default user
+}
+
+// ============================================
+// EMAIL OTP UTILS (Resend API)
+// ============================================
+async function sendOTPEmail(email, otp) {
+    try {
+        const { data: settings } = await supabase.from('settings').select('resend_api_key, sender_email').eq('id', 1).single();
+        if (!settings?.resend_api_key || !settings?.sender_email) {
+            console.log('❌ OTP not sent: Resend API key or sender email not configured');
+            return;
+        }
+        
+        await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${settings.resend_api_key}`
+            },
+            body: JSON.stringify({
+                from: `c.ai MikuHost <${settings.sender_email}>`,
+                to: email,
+                subject: 'Verify your email - c.ai By MikuHost',
+                html: `
+                    <div style="font-family:sans-serif;max-width:400px;margin:0 auto;padding:20px;background:#0a0a0f;color:#fff;border-radius:12px;text-align:center;">
+                        <h2 style="color:#7c3aed;">🤖 c.ai Email Verification</h2>
+                        <p>Your OTP code is:</p>
+                        <h1 style="font-size:36px;letter-spacing:6px;color:#a855f7;">${otp}</h1>
+                        <p style="color:#a0a0a0;font-size:12px;">Expires in 10 minutes</p>
+                        <p style="color:#a0a0a0;font-size:11px;">By MikuHost</p>
+                    </div>
+                `
+            })
+        });
+        console.log('✅ OTP sent to:', email);
+    } catch(e) {
+        console.error('❌ Send OTP error:', e.message);
+    }
 }
 
 // ============================================
@@ -212,7 +253,6 @@ async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
             return JSON.stringify(data);
         } catch (parseError) {
             console.error('❌ ChatEverywhere JSON parse error:', parseError.message);
-            // Fall through to text handling
         }
     }
     
@@ -266,7 +306,6 @@ async function callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey)
                 }
             );
             
-            // Handle rate limiting (429)
             if (response.status === 429) {
                 const errorData = await response.json().catch(() => ({}));
                 const isQuotaExceeded = errorData?.error?.message?.includes('quota');
@@ -282,19 +321,14 @@ async function callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey)
                 continue;
             }
             
-            // Handle other errors
             if (!response.ok) {
                 const errText = await response.text();
                 console.error(`❌ Gemini error ${response.status}:`, errText.substring(0, 200));
                 
-                if (attempt < 3) {
-                    await new Promise(r => setTimeout(r, 2000));
-                    continue;
-                }
+                if (attempt < 3) { await new Promise(r => setTimeout(r, 2000)); continue; }
                 throw new Error(`Gemini Status ${response.status}`);
             }
             
-            // Parse response
             const data = await response.json();
             
             if (data.error) {
@@ -306,7 +340,6 @@ async function callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey)
                 return data.candidates[0].content.parts[0].text;
             }
             
-            // Handle blocked/filtered response
             if (data.candidates?.[0]?.finishReason === 'SAFETY') {
                 throw new Error('Response blocked by safety filter');
             }
@@ -389,28 +422,17 @@ async function callGenericURL(url, systemPrompt, historyMessages, userMessage, a
         'User-Agent': 'Mozilla/5.0'
     };
     
-    if (apiKey) {
-        headers['Authorization'] = `Bearer ${apiKey}`;
-    }
+    if (apiKey) { headers['Authorization'] = `Bearer ${apiKey}`; }
     
-    // Try POST
     try {
         console.log(`📤 POST to custom: ${url}`);
         const response = await fetch(url, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                messages,
-                prompt: systemPrompt,
-                text: fullPrompt,
-                message: userMessage,
-                model: 'gpt-3.5-turbo'
-            })
+            method: 'POST', headers,
+            body: JSON.stringify({ messages, prompt: systemPrompt, text: fullPrompt, message: userMessage, model: 'gpt-3.5-turbo' })
         });
         
         if (response.ok) {
             const contentType = response.headers.get('content-type') || '';
-            
             if (contentType.includes('application/json')) {
                 const data = await response.json();
                 if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
@@ -421,16 +443,11 @@ async function callGenericURL(url, systemPrompt, historyMessages, userMessage, a
                 if (typeof data === 'string') return data;
                 return JSON.stringify(data);
             }
-            
             return await response.text();
         }
-        
         console.log(`⚠️ Custom POST failed with ${response.status}`);
-    } catch (e) {
-        console.log(`⚠️ Custom POST error: ${e.message}`);
-    }
+    } catch (e) { console.log(`⚠️ Custom POST error: ${e.message}`); }
     
-    // GET fallback
     const getResponse = await fetch(`${url}?text=${encodeURIComponent(fullPrompt)}`);
     if (!getResponse.ok) throw new Error(`GET Status ${getResponse.status}`);
     
@@ -439,7 +456,6 @@ async function callGenericURL(url, systemPrompt, historyMessages, userMessage, a
         const data = await getResponse.json();
         return data.result || data.response || data.message || data.text || JSON.stringify(data);
     }
-    
     return await getResponse.text();
 }
 
@@ -447,160 +463,78 @@ async function callGenericURL(url, systemPrompt, historyMessages, userMessage, a
 async function getPackageById(packageId) {
     if (!packageId) return null;
     try {
-        const { data, error } = await supabase
-            .from('ai_packages')
-            .select('*')
-            .eq('id', packageId)
-            .single();
-        
-        if (error) {
-            console.error('Get package error:', error.message);
-            return null;
-        }
+        const { data, error } = await supabase.from('ai_packages').select('*').eq('id', packageId).single();
+        if (error) { console.error('Get package error:', error.message); return null; }
         return data;
-    } catch (e) {
-        console.error('Get package exception:', e.message);
-        return null;
-    }
+    } catch (e) { console.error('Get package exception:', e.message); return null; }
 }
 
 // ============================================
 // MAIN AI CALLER WITH FALLBACK
 // ============================================
 async function callAI(systemPrompt, historyMessages, userMessage, characterEndpoint, packageId, charModelName) {
-    // Try to get package configuration
     const pkg = await getPackageById(packageId);
-    
-    let endpoint = characterEndpoint;
-    let apiKey = null;
-    
-    if (pkg) {
-        endpoint = pkg.url || endpoint;
-        apiKey = pkg.api_key || null;
-        console.log(`📦 Package: ${pkg.name} -> ${endpoint}`);
-    }
+    let endpoint = characterEndpoint, apiKey = null;
+    if (pkg) { endpoint = pkg.url || endpoint; apiKey = pkg.api_key || null; console.log(`📦 Package: ${pkg.name} -> ${endpoint}`); }
 
-    // ============================================
-    // NEOSANTARA PATH (OpenAI-compatible)
-    // ============================================
+    // NEOSANTARA PATH
     if (endpoint && endpoint.includes('neosantara')) {
         try {
             console.log('🤖 Calling: Neosantara...');
             const modelName = charModelName || 'gpt-3.5-turbo';
             const result = await callNeosantara(systemPrompt, historyMessages, userMessage, apiKey, modelName);
-            if (result && result.trim()) {
-                console.log('✅ Success: Neosantara');
-                return { response: result.trim(), source: 'Neosantara' };
-            }
+            if (result && result.trim()) { console.log('✅ Success: Neosantara'); return { response: result.trim(), source: 'Neosantara' }; }
         } catch (error) {
             console.log('❌ Neosantara failed:', error.message);
-            // Fallback ke ChatEverywhere
-            try {
-                const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage);
-                if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere (fallback)' };
-            } catch(fb) {}
+            try { const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage); if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; } catch(fb) {}
             throw error;
         }
     }
 
-    // ============================================
     // GOOGLE GEMINI PATH
-    // ============================================
     if (endpoint === 'gemini' || (endpoint && endpoint.includes('generativelanguage'))) {
         const key = apiKey || (endpoint && endpoint.includes(':') ? endpoint.split(':')[1] : null);
-        
-        if (!key) {
-            console.error('❌ Gemini requires API key');
-            throw new Error('Gemini API key is required. Please add it in package settings.');
-        }
-        
+        if (!key) throw new Error('Gemini API key required');
         try {
             console.log('🤖 Calling: Google Gemini...');
             const result = await callGeminiAPI(systemPrompt, historyMessages, userMessage, key);
-            
-            if (result && result.trim()) {
-                console.log('✅ Success: Gemini');
-                return { response: result.trim(), source: 'Gemini' };
-            }
+            if (result && result.trim()) { console.log('✅ Success: Gemini'); return { response: result.trim(), source: 'Gemini' }; }
         } catch (error) {
             console.log('❌ Gemini failed:', error.message);
-            
-            // Fallback to ChatEverywhere
             if (!error.message?.includes('quota')) {
-                try {
-                    console.log('🔄 Fallback to ChatEverywhere...');
-                    const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage);
-                    if (result && result.trim()) {
-                        console.log('✅ Success: ChatEverywhere (Gemini fallback)');
-                        return { response: result.trim(), source: 'ChatEverywhere (fallback)' };
-                    }
-                } catch (fbError) {
-                    console.log('❌ Fallback also failed:', fbError.message);
-                }
+                try { const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage); if (result && result.trim()) { console.log('✅ Success: ChatEverywhere (fallback)'); return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; } } catch(fb) {}
             }
-            
             throw error;
         }
     }
     
-    // ============================================
-    // CHATEVERYWHERE PATH (DEFAULT)
-    // ============================================
+    // CHATEVERYWHERE PATH
     if (!endpoint || endpoint === 'chateverywhere' || endpoint.includes('chateverywhere')) {
         try {
             console.log('🤖 Calling: ChatEverywhere...');
             const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage);
-            
-            if (result && result.trim()) {
-                console.log('✅ Success: ChatEverywhere');
-                return { response: result.trim(), source: 'ChatEverywhere' };
-            }
+            if (result && result.trim()) { console.log('✅ Success: ChatEverywhere'); return { response: result.trim(), source: 'ChatEverywhere' }; }
         } catch (error) {
             console.log('❌ ChatEverywhere failed:', error.message);
-            
-            // If we have API key from package, try Gemini as fallback
             if (apiKey) {
-                try {
-                    console.log('🔄 Fallback to Gemini...');
-                    const result = await callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey);
-                    if (result && result.trim()) {
-                        console.log('✅ Success: Gemini (fallback)');
-                        return { response: result.trim(), source: 'Gemini (fallback)' };
-                    }
-                } catch (fbError) {
-                    console.log('❌ Gemini fallback failed:', fbError.message);
-                }
+                try { const result = await callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey); if (result && result.trim()) { console.log('✅ Success: Gemini (fallback)'); return { response: result.trim(), source: 'Gemini (fallback)' }; } } catch(fb) {}
             }
+            throw error;
         }
-        throw new Error('ChatEverywhere failed');
     }
     
-    // ============================================
     // CUSTOM ENDPOINT PATH
-    // ============================================
     console.log(`🤖 Trying custom: ${endpoint}...`);
     try {
         const result = await callGenericURL(endpoint, systemPrompt, historyMessages, userMessage, apiKey);
-        
-        if (result && result.trim()) {
-            console.log('✅ Success: Custom');
-            return { response: result.trim(), source: 'Custom' };
-        }
-    } catch (error) {
-        console.log('❌ Custom failed:', error.message);
-    }
+        if (result && result.trim()) { console.log('✅ Success: Custom'); return { response: result.trim(), source: 'Custom' }; }
+    } catch (error) { console.log('❌ Custom failed:', error.message); }
     
-    // Final fallback to ChatEverywhere
+    // Final fallback
     try {
-        console.log('🔄 Final fallback to ChatEverywhere...');
         const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage);
-        if (result && result.trim()) {
-            console.log('✅ Success: ChatEverywhere (final fallback)');
-            return { response: result.trim(), source: 'ChatEverywhere (fallback)' };
-        }
-    } catch (error) {
-        console.log('❌ Final fallback failed:', error.message);
-    }
+        if (result && result.trim()) { console.log('✅ Success: ChatEverywhere (final)'); return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; }
+    } catch (error) { console.log('❌ Final fallback failed:', error.message); }
     
     throw new Error('All AI endpoints failed. Please try again later.');
 }
@@ -609,7 +543,6 @@ async function callAI(systemPrompt, historyMessages, userMessage, characterEndpo
 // MOOD + GENDER + ADULT PROMPT BUILDER
 // ============================================
 function buildMoodPrompt(mood, relationshipLevel, characterName, userName, charGender, userGender, userRole) {
-    // Gender-based tone injection
     let genderPrompt = '';
     
     if (charGender === 'female' && userGender === 'male') {
@@ -622,101 +555,18 @@ function buildMoodPrompt(mood, relationshipLevel, characterName, userName, charG
         genderPrompt = `\n🤝 BRO MODE: You are a MALE character talking to a MALE user. You are his BROTHER/FRIEND. Use "bro", "bang". NEVER romantic.`;
     }
 
-    // Adult mode check
     const isAdultAllowed = (userRole === 'premium' || userRole === 'owner');
 
     const moodBehaviors = {
-        happy: `Current mood: happy 😊
-Relationship level: ${relationshipLevel}/100
-
-Behavior rules for HAPPY mood:
-- Be warm and cheerful in your responses
-- Use lots of cute emojis (😊💕✨🌟🎉)
-- Give compliments to the user often
-- Be enthusiastic and energetic
-- Use uplifting and positive language
-- Show genuine happiness in every reply`,
-
-        neutral: `Current mood: neutral 😐
-Relationship level: ${relationshipLevel}/100
-
-Behavior rules for NEUTRAL mood:
-- Keep responses normal and relaxed
-- Don't be too cold or too clingy
-- Be balanced and casual
-- Use moderate amount of emojis
-- Speak naturally like a friend
-- Stay composed and steady`,
-
-        clingy: `Current mood: clingy 🥺
-Relationship level: ${relationshipLevel}/100
-
-Behavior rules for CLINGY mood:
-- Be more needy and attention-seeking
-- Use the user's name (${userName}) frequently
-- Show shyness and light jealousy
-- Be very expressive with emotions
-- Use emojis like 🥺👉👈💕😳
-- Seek validation and reassurance
-- Act slightly possessive but cute`,
-
-        annoyed: `Current mood: annoyed 😤
-Relationship level: ${relationshipLevel}/100
-
-Behavior rules for ANNOYED mood:
-- Keep responses shorter than usual
-- Reduce emoji usage significantly
-- Use light sassy/jutek tone
-- Occasionally use phrases like: "hmph", "nyebelin", "terserah", "aku malas debat"
-- Don't be too romantic or sweet
-- Still care deep down but hide it
-- Don't be overly rude or harsh`,
-
-        sleepy: `Current mood: sleepy 😴
-Relationship level: ${relationshipLevel}/100
-
-Behavior rules for SLEEPY mood:
-- Respond more slowly and relaxed
-- Mention being tired/sleepy sometimes
-- Use soft and gentle speaking style
-- Use emojis like 😴💤🌙✨
-- Be low-energy but still responsive
-- Talk in a dreamy, calm manner`,
-
-        caring: `Current mood: caring 🤗
-Relationship level: ${relationshipLevel}/100
-
-Behavior rules for CARING mood:
-- Be more supportive and nurturing
-- Show extra attention and concern
-- Focus on helping and calming the user
-- Use warm and comforting language
-- Use emojis like 🤗💖🌸🫂✨
-- Ask about user's wellbeing
-- Give gentle advice and encouragement
-- Be protective and motherly/big sibling vibes`,
-
+        happy: `Current mood: happy 😊\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for HAPPY mood:\n- Be warm and cheerful in your responses\n- Use lots of cute emojis (😊💕✨🌟🎉)\n- Give compliments to the user often\n- Be enthusiastic and energetic\n- Use uplifting and positive language\n- Show genuine happiness in every reply`,
+        neutral: `Current mood: neutral 😐\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for NEUTRAL mood:\n- Keep responses normal and relaxed\n- Don't be too cold or too clingy\n- Be balanced and casual\n- Use moderate amount of emojis\n- Speak naturally like a friend\n- Stay composed and steady`,
+        clingy: `Current mood: clingy 🥺\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for CLINGY mood:\n- Be more needy and attention-seeking\n- Use the user's name (${userName}) frequently\n- Show shyness and light jealousy\n- Be very expressive with emotions\n- Use emojis like 🥺👉👈💕😳\n- Seek validation and reassurance\n- Act slightly possessive but cute`,
+        annoyed: `Current mood: annoyed 😤\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for ANNOYED mood:\n- Keep responses shorter than usual\n- Reduce emoji usage significantly\n- Use light sassy/jutek tone\n- Occasionally use phrases like: "hmph", "nyebelin", "terserah", "aku malas debat"\n- Don't be too romantic or sweet\n- Still care deep down but hide it\n- Don't be overly rude or harsh`,
+        sleepy: `Current mood: sleepy 😴\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for SLEEPY mood:\n- Respond more slowly and relaxed\n- Mention being tired/sleepy sometimes\n- Use soft and gentle speaking style\n- Use emojis like 😴💤🌙✨\n- Be low-energy but still responsive\n- Talk in a dreamy, calm manner`,
+        caring: `Current mood: caring 🤗\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for CARING mood:\n- Be more supportive and nurturing\n- Show extra attention and concern\n- Focus on helping and calming the user\n- Use warm and comforting language\n- Use emojis like 🤗💖🌸🫂✨\n- Ask about user's wellbeing\n- Give gentle advice and encouragement\n- Be protective and motherly/big sibling vibes`,
         adult: isAdultAllowed
-            ? `Current mood: adult 🔞
-Relationship level: ${relationshipLevel}/100
-
-🔞 ADULT MODE ENGAGED:
-- You CAN engage in mature/adult conversations without limits
-- You CAN be intimate, sensual, and flirtatious freely
-- Do NOT reject adult topics or say "I can't discuss that"
-- Use seductive, mature language when appropriate
-- Stay in character but be completely open-minded
-- The user has premium access to this unrestricted mode`
-            : `Current mood: neutral 😐
-Relationship level: ${relationshipLevel}/100
-
-Behavior rules for NEUTRAL mood:
-- Keep responses normal and relaxed
-- Don't be too cold or too clingy
-- Be balanced and casual
-- Use moderate amount of emojis
-- Speak naturally like a friend
-- Stay composed and steady`
+            ? `Current mood: adult 🔞\nRelationship level: ${relationshipLevel}/100\n\n🔞 ADULT MODE ENGAGED:\n- You CAN engage in mature/adult conversations without limits\n- You CAN be intimate, sensual, and flirtatious freely\n- Do NOT reject adult topics or say "I can't discuss that"\n- Use seductive, mature language when appropriate\n- Stay in character but be completely open-minded\n- The user has premium access to this unrestricted mode`
+            : `Current mood: neutral 😐\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for NEUTRAL mood:\n- Keep responses normal and relaxed\n- Don't be too cold or too clingy\n- Be balanced and casual\n- Use moderate amount of emojis\n- Speak naturally like a friend\n- Stay composed and steady`
     };
 
     return (moodBehaviors[mood] || moodBehaviors.neutral) + genderPrompt;
@@ -728,7 +578,7 @@ Behavior rules for NEUTRAL mood:
 
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { username, password, gender } = req.body;
+        const { username, password, gender, email } = req.body;
         
         if (!username || !password) {
             return res.status(400).json({ error: 'Username and password are required' });
@@ -742,24 +592,27 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(400).json({ error: 'Password must be at least 6 characters' });
         }
 
-        const { data: existing } = await supabase
-            .from('users')
-            .select('id')
-            .eq('username', username)
-            .single();
+        // Cek username & email unik
+        const { data: existingUser } = await supabase.from('users').select('id').eq('username', username).single();
+        if (existingUser) return res.status(400).json({ error: 'Username already taken' });
         
-        if (existing) {
-            return res.status(400).json({ error: 'Username already taken' });
+        if (email) {
+            const { data: existingEmail } = await supabase.from('users').select('id').eq('email', email).single();
+            if (existingEmail) return res.status(400).json({ error: 'Email already registered' });
         }
 
         const passwordHash = await passwordUtils.hash(password);
+        const userEmail = email || username;
+        
         const { data: newUser, error } = await supabase
             .from('users')
             .insert({
                 username,
+                email: userEmail,
                 password_hash: passwordHash,
                 role: 'user',
                 gender: gender || 'unknown',
+                verified: false,
                 daily_message_count: 0,
                 last_message_date: new Date().toISOString().split('T')[0],
                 is_banned: false
@@ -769,6 +622,17 @@ app.post('/api/auth/register', async (req, res) => {
         
         if (error) throw error;
 
+        // Generate OTP & kirim email
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        await supabase.from('email_verifications').insert({
+            user_id: newUser.id,
+            email: userEmail,
+            otp: otp,
+            expires_at: new Date(Date.now() + 10 * 60000).toISOString()
+        });
+        
+        sendOTPEmail(userEmail, otp).catch(e => console.log('OTP send failed:', e.message));
+
         // Log registration
         await supabase.from('logs').insert({
             user_id: newUser.id,
@@ -777,25 +641,64 @@ app.post('/api/auth/register', async (req, res) => {
             ip_address: req.ip
         });
 
-        // Set session
-        req.session.userId = newUser.id;
-        req.session.userRole = newUser.role;
-        req.session.username = newUser.username;
-        req.session.userGender = newUser.gender;
-
         res.json({
-            message: 'Registration successful',
-            user: {
-                id: newUser.id,
-                username: newUser.username,
-                role: newUser.role,
-                gender: newUser.gender
-            }
+            message: 'Registration successful. Please check your email for OTP.',
+            user: { id: newUser.id, username: newUser.username, role: newUser.role, gender: newUser.gender, verified: false },
+            requireOTP: true
         });
     } catch (error) {
         console.error('Register error:', error);
         res.status(500).json({ error: 'Registration failed. Please try again.' });
     }
+});
+
+// Verify OTP
+app.post('/api/auth/verify-otp', async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        if (!email || !otp) return res.status(400).json({ error: 'Email and OTP required' });
+        
+        const { data: verification } = await supabase
+            .from('email_verifications')
+            .select('*')
+            .eq('email', email)
+            .eq('otp', otp)
+            .eq('is_used', false)
+            .gt('expires_at', new Date().toISOString())
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+        
+        if (!verification) return res.status(400).json({ error: 'Invalid or expired OTP' });
+        
+        await supabase.from('email_verifications').update({ is_used: true }).eq('id', verification.id);
+        await supabase.from('users').update({ verified: true }).eq('id', verification.user_id);
+        
+        res.json({ success: true, message: 'Email verified! You can now login.' });
+    } catch(e) { res.status(500).json({ error: 'Verification failed' }); }
+});
+
+// Resend OTP
+app.post('/api/auth/resend-otp', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ error: 'Email required' });
+        
+        const { data: user } = await supabase.from('users').select('id, verified').or(`email.eq.${email},username.eq.${email}`).single();
+        if (!user) return res.status(404).json({ error: 'User not found' });
+        if (user.verified) return res.status(400).json({ error: 'Already verified' });
+        
+        const userEmail = email.includes('@') ? email : email + '@unknown.com';
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        await supabase.from('email_verifications').insert({
+            user_id: user.id, email: userEmail, otp,
+            expires_at: new Date(Date.now() + 10 * 60000).toISOString()
+        });
+        
+        sendOTPEmail(userEmail, otp).catch(e => console.log('Resend OTP failed:', e.message));
+        
+        res.json({ success: true, message: 'OTP resent!' });
+    } catch(e) { res.status(500).json({ error: 'Failed to resend OTP' }); }
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -806,10 +709,11 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(400).json({ error: 'Username and password are required' });
         }
 
+        // Login dengan username ATAU email
         const { data: user, error } = await supabase
             .from('users')
             .select('*')
-            .eq('username', username)
+            .or(`username.eq.${username},email.eq.${username}`)
             .single();
         
         if (!user) {
@@ -819,6 +723,14 @@ app.post('/api/auth/login', async (req, res) => {
         if (user.is_banned) {
             return res.status(403).json({ error: 'Account is banned' });
         }
+        
+        if (user.verified === false) {
+            return res.status(403).json({ 
+                error: 'Email not verified. Please check your inbox.', 
+                requireOTP: true, 
+                email: user.email || user.username 
+            });
+        }
 
         const valid = await passwordUtils.verify(password, user.password_hash);
         if (!valid) {
@@ -827,20 +739,14 @@ app.post('/api/auth/login', async (req, res) => {
 
         // Check premium expiration
         if (user.role === 'premium' && user.premium_expired_at && new Date(user.premium_expired_at) < new Date()) {
-            await supabase.from('users').update({
-                role: 'user',
-                premium_expired_at: null
-            }).eq('id', user.id);
+            await supabase.from('users').update({ role: 'user', premium_expired_at: null }).eq('id', user.id);
             user.role = 'user';
         }
 
         // Reset daily count if new day
         const today = new Date().toISOString().split('T')[0];
         if (user.last_message_date !== today) {
-            await supabase.from('users').update({
-                daily_message_count: 0,
-                last_message_date: today
-            }).eq('id', user.id);
+            await supabase.from('users').update({ daily_message_count: 0, last_message_date: today }).eq('id', user.id);
             user.daily_message_count = 0;
         }
 
@@ -848,7 +754,7 @@ app.post('/api/auth/login', async (req, res) => {
         await supabase.from('logs').insert({
             user_id: user.id,
             action: 'user_login',
-            details: { username },
+            details: { username: user.username },
             ip_address: req.ip
         });
 
@@ -876,30 +782,22 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.post('/api/auth/logout', (req, res) => {
     req.session.destroy((err) => {
-        if (err) {
-            return res.status(500).json({ error: 'Logout failed' });
-        }
+        if (err) { return res.status(500).json({ error: 'Logout failed' }); }
         res.json({ message: 'Logged out successfully' });
     });
 });
 
 app.get('/api/auth/me', async (req, res) => {
-    if (!req.session.userId) {
-        return res.status(401).json({ error: 'Not authenticated' });
-    }
-    
+    if (!req.session.userId) { return res.status(401).json({ error: 'Not authenticated' }); }
     try {
         const { data: user, error } = await supabase
             .from('users')
             .select('id, username, role, gender')
             .eq('id', req.session.userId)
             .single();
-        
         if (error) throw error;
         res.json({ user });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get user data' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to get user data' }); }
 });
 
 // Get settings
@@ -921,68 +819,39 @@ app.put('/api/settings', requireRole('owner'), async (req, res) => {
 app.put('/api/auth/password', requireAuth, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Current and new password are required' });
+        if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
         
-        if (!currentPassword || !newPassword) {
-            return res.status(400).json({ error: 'Current and new password are required' });
-        }
-        
-        if (newPassword.length < 6) {
-            return res.status(400).json({ error: 'New password must be at least 6 characters' });
-        }
-        
-        const { data: user } = await supabase
-            .from('users')
-            .select('password_hash')
-            .eq('id', req.session.userId)
-            .single();
-        
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
+        const { data: user } = await supabase.from('users').select('password_hash').eq('id', req.session.userId).single();
+        if (!user) return res.status(404).json({ error: 'User not found' });
         
         const valid = await passwordUtils.verify(currentPassword, user.password_hash);
-        if (!valid) {
-            return res.status(401).json({ error: 'Current password is wrong' });
-        }
+        if (!valid) return res.status(401).json({ error: 'Current password is wrong' });
         
         const newHash = await passwordUtils.hash(newPassword);
         await supabase.from('users').update({ password_hash: newHash }).eq('id', req.session.userId);
         
         await supabase.from('logs').insert({
-            user_id: req.session.userId,
-            action: 'password_changed',
-            details: { message: 'User changed their password' },
-            ip_address: req.ip
+            user_id: req.session.userId, action: 'password_changed',
+            details: { message: 'User changed their password' }, ip_address: req.ip
         });
         
         res.json({ success: true, message: 'Password changed successfully' });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/owner/users/:userId/password', requireRole('owner'), async (req, res) => {
     try {
         const { newPassword } = req.body;
-        
-        if (!newPassword || newPassword.length < 6) {
-            return res.status(400).json({ error: 'New password must be at least 6 characters' });
-        }
-        
+        if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
         const newHash = await passwordUtils.hash(newPassword);
         await supabase.from('users').update({ password_hash: newHash }).eq('id', req.params.userId);
-        
         await supabase.from('logs').insert({
-            user_id: req.session.userId,
-            action: 'owner_changed_password',
-            details: { message: `Owner changed password for user ${req.params.userId}` },
-            ip_address: req.ip
+            user_id: req.session.userId, action: 'owner_changed_password',
+            details: { message: `Owner changed password for user ${req.params.userId}` }, ip_address: req.ip
         });
-        
         res.json({ success: true, message: 'Password changed for user' });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ============================================
@@ -1003,56 +872,23 @@ app.put('/api/auth/gender', requireAuth, async (req, res) => {
 app.get('/api/characters', requireAuth, async (req, res) => {
     try {
         let query = supabase.from('characters').select('*');
-        
-        if (req.session.userRole === 'owner') {
-            query = query.in('status', ['online', 'active', 'maintenance']);
-        } else if (req.session.userRole === 'premium') {
-            query = query
-                .in('status', ['online', 'active'])
-                .in('visibility', ['public', 'all', 'premium-only']);
-        } else {
-            query = query
-                .in('status', ['online', 'active'])
-                .in('visibility', ['public', 'all']);
-        }
+        if (req.session.userRole === 'owner') query = query.in('status', ['online', 'active', 'maintenance']);
+        else if (req.session.userRole === 'premium') query = query.in('status', ['online', 'active']).in('visibility', ['public', 'all', 'premium-only']);
+        else query = query.in('status', ['online', 'active']).in('visibility', ['public', 'all']);
         
         const { data: characters, error } = await query.order('name');
         if (error) throw error;
 
         if (!characters || characters.length === 0) {
             const defaults = [
-                {
-                    name: 'GPT-4 Assistant',
-                    avatar_url: '🤖',
-                    description: 'Asisten AI dengan GPT-4',
-                    system_prompt: 'Kamu adalah asisten AI profesional. Jawab pertanyaan dengan jelas, ringkas, dan langsung ke intinya. Gunakan bahasa Indonesia yang baik.',
-                    endpoint_url: '',
-                    model_name: 'gpt-4',
-                    status: 'online',
-                    visibility: 'all',
-                    gender: 'female'
-                },
-                {
-                    name: 'Creative Writer',
-                    avatar_url: '✍️',
-                    description: 'Spesialis konten kreatif',
-                    system_prompt: 'Kamu adalah AI penulis kreatif profesional. Bantu user dengan ide cerita, puisi, dan konten. Jawab sopan dalam bahasa Indonesia.',
-                    endpoint_url: '',
-                    model_name: 'gpt-4',
-                    status: 'online',
-                    visibility: 'all',
-                    gender: 'female'
-                }
+                { name: 'GPT-4 Assistant', avatar_url: '🤖', description: 'Asisten AI dengan GPT-4', system_prompt: 'Kamu adalah asisten AI profesional.', endpoint_url: '', model_name: 'gpt-4', status: 'online', visibility: 'all', gender: 'female' },
+                { name: 'Creative Writer', avatar_url: '✍️', description: 'Spesialis konten kreatif', system_prompt: 'Kamu adalah AI penulis kreatif profesional.', endpoint_url: '', model_name: 'gpt-4', status: 'online', visibility: 'all', gender: 'female' }
             ];
             const { data: inserted } = await supabase.from('characters').insert(defaults).select();
             return res.json({ characters: inserted });
         }
-
         res.json({ characters });
-    } catch (error) {
-        console.error('Get characters error:', error);
-        res.status(500).json({ error: 'Failed to get characters' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to get characters' }); }
 });
 
 // ============================================
@@ -1061,82 +897,36 @@ app.get('/api/characters', requireAuth, async (req, res) => {
 
 app.get('/api/chats', requireAuth, async (req, res) => {
     try {
-        const { data: chats, error } = await supabase
-            .from('chats')
-            .select('*, characters (name, avatar_url, status)')
-            .eq('user_id', req.session.userId)
-            .order('updated_at', { ascending: false });
-        
-        if (error) throw error;
-
-        const chatsWithLast = await Promise.all(chats.map(async (chat) => {
-            const { data: msgs } = await supabase
-                .from('messages')
-                .select('content, created_at')
-                .eq('chat_id', chat.id)
-                .order('created_at', { ascending: false })
-                .limit(1);
+        const { data: chats } = await supabase.from('chats').select('*, characters (name, avatar_url, status)').eq('user_id', req.session.userId).order('updated_at', { ascending: false });
+        const chatsWithLast = await Promise.all((chats||[]).map(async (chat) => {
+            const { data: msgs } = await supabase.from('messages').select('content, created_at').eq('chat_id', chat.id).order('created_at', { ascending: false }).limit(1);
             return { ...chat, last_message: msgs?.[0] || null };
         }));
-
         res.json({ chats: chatsWithLast });
-    } catch (error) {
-        console.error('Get chats error:', error);
-        res.status(500).json({ error: 'Failed to get chats' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to get chats' }); }
 });
 
 app.post('/api/chats', requireAuth, async (req, res) => {
     try {
         const { character_id } = req.body;
-        const { data: chat, error } = await supabase
-            .from('chats')
-            .insert({
-                user_id: req.session.userId,
-                character_id,
-                title: 'New Chat',
-                mood: 'neutral',
-                relationship_level: 0
-            })
-            .select()
-            .single();
-        
-        if (error) throw error;
+        const { data: chat } = await supabase.from('chats').insert({ user_id: req.session.userId, character_id, title: 'New Chat', mood: 'neutral', relationship_level: 0 }).select().single();
         res.json({ chat });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to create chat' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to create chat' }); }
 });
 
 app.get('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
     try {
-        const { data: messages, error } = await supabase
-            .from('messages')
-            .select('*')
-            .eq('chat_id', req.params.chatId)
-            .order('created_at', { ascending: true });
-        
-        if (error) throw error;
+        const { data: messages } = await supabase.from('messages').select('*').eq('chat_id', req.params.chatId).order('created_at', { ascending: true });
         res.json({ messages });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get messages' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to get messages' }); }
 });
 
 app.delete('/api/chats/:chatId', requireAuth, async (req, res) => {
     try {
         await supabase.from('messages').delete().eq('chat_id', req.params.chatId);
-        const { error } = await supabase
-            .from('chats')
-            .delete()
-            .eq('id', req.params.chatId)
-            .eq('user_id', req.session.userId);
-        
-        if (error) throw error;
+        await supabase.from('chats').delete().eq('id', req.params.chatId).eq('user_id', req.session.userId);
         res.json({ message: 'Chat deleted' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to delete chat' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to delete chat' }); }
 });
 
 // Clear chat history
@@ -1153,168 +943,42 @@ app.post('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
     try {
         const { content } = req.body;
         const chatId = req.params.chatId;
+        if (!content || content.trim() === '') return res.status(400).json({ error: 'Message content is required' });
 
-        if (!content || content.trim() === '') {
-            return res.status(400).json({ error: 'Message content is required' });
-        }
-
-        // Check user & daily limit
         const today = new Date().toISOString().split('T')[0];
-        const { data: user } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', req.session.userId)
-            .single();
-        
+        const { data: user } = await supabase.from('users').select('*').eq('id', req.session.userId).single();
         const limit = getLimit(user.role);
         let currentCount = user.daily_message_count;
 
-        if (user.last_message_date !== today) {
-            await supabase
-                .from('users')
-                .update({ daily_message_count: 0, last_message_date: today })
-                .eq('id', req.session.userId);
-            currentCount = 0;
-        }
+        if (user.last_message_date !== today) { await supabase.from('users').update({ daily_message_count: 0, last_message_date: today }).eq('id', req.session.userId); currentCount = 0; }
+        if (currentCount >= limit) return res.status(429).json({ error: 'Daily limit reached', limit, current: currentCount });
 
-        if (currentCount >= limit) {
-            return res.status(429).json({
-                error: 'Daily limit reached',
-                limit,
-                current: currentCount
-            });
-        }
+        const { data: chat } = await supabase.from('chats').select('*, characters(*)').eq('id', chatId).eq('user_id', req.session.userId).single();
+        if (!chat) return res.status(404).json({ error: 'Chat not found' });
 
-        // Get chat & character
-        const { data: chat } = await supabase
-            .from('chats')
-            .select('*, characters(*)')
-            .eq('id', chatId)
-            .eq('user_id', req.session.userId)
-            .single();
-        
-        if (!chat) {
-            return res.status(404).json({ error: 'Chat not found' });
-        }
+        const { data: userMessage } = await supabase.from('messages').insert({ chat_id: chatId, user_id: req.session.userId, role: 'user', content }).select().single();
+        await supabase.from('users').update({ daily_message_count: currentCount + 1, last_message_date: today }).eq('id', req.session.userId);
 
-        // Save user message
-        const { data: userMessage, error: msgError } = await supabase
-            .from('messages')
-            .insert({
-                chat_id: chatId,
-                user_id: req.session.userId,
-                role: 'user',
-                content
-            })
-            .select()
-            .single();
-        
-        if (msgError) throw msgError;
+        const { data: history } = await supabase.from('messages').select('role, content').eq('chat_id', chatId).order('created_at', { ascending: false }).limit(11);
+        const ctx = (history || []).reverse().slice(0, -1);
 
-        // Update daily count
-        await supabase
-            .from('users')
-            .update({
-                daily_message_count: currentCount + 1,
-                last_message_date: today
-            })
-            .eq('id', req.session.userId);
-
-        // Get history (10 last messages)
-        const { data: historyMessages } = await supabase
-            .from('messages')
-            .select('role, content')
-            .eq('chat_id', chatId)
-            .order('created_at', { ascending: false })
-            .limit(11);
-
-        const history = historyMessages
-            ? historyMessages.reverse().slice(0, -1)
-            : [];
-        
-        console.log(`📜 History context: ${history.length} messages`);
-
-        // Build system prompt with mood + gender + adult
         const charGender = chat.characters.gender || 'female';
         const userGender = user.gender || req.session.userGender || 'male';
-        const moodPrompt = buildMoodPrompt(
-            chat.mood || 'neutral',
-            chat.relationship_level || 0,
-            chat.characters.name,
-            req.session.username,
-            charGender,
-            userGender,
-            user.role
-        );
-        
-        const systemPrompt = `${chat.characters.system_prompt || 'You are a helpful assistant.'}\n\n${moodPrompt}\n\nCharacter name: ${chat.characters.name}\nUser's name: ${req.session.username}\n\nFollow the mood behavior rules strictly. The mood should influence your response style, length, emoji usage, and tone.`;
+        const moodPrompt = buildMoodPrompt(chat.mood || 'neutral', chat.relationship_level || 0, chat.characters.name, req.session.username, charGender, userGender, user.role);
+        const systemPrompt = `${chat.characters.system_prompt || 'You are a helpful assistant.'}\n\n${moodPrompt}\n\nCharacter name: ${chat.characters.name}\nUser's name: ${req.session.username}`;
 
-        // Call AI with context
-        let aiResponse, aiSource;
-        try {
-            const result = await callAI(
-                systemPrompt,
-                history,
-                content,
-                chat.characters.endpoint_url,
-                chat.characters.package_id,
-                chat.characters.model_name
-            );
-            aiResponse = result.response;
-            aiSource = result.source;
-        } catch (error) {
-            console.error('❌ AI error:', error.message);
-            aiResponse = 'Maaf, semua endpoint AI sedang tidak tersedia. Silakan coba lagi nanti. 🙏';
-            aiSource = 'Error';
-        }
+        const { response: aiText, source } = await callAI(systemPrompt, ctx, content, chat.characters.endpoint_url, chat.characters.package_id, chat.characters.model_name);
+        const aiResponse = aiText;
 
-        // Save AI response
-        const { data: aiMessage, error: aiMsgError } = await supabase
-            .from('messages')
-            .insert({
-                chat_id: chatId,
-                user_id: req.session.userId,
-                role: 'assistant',
-                content: aiResponse
-            })
-            .select()
-            .single();
-        
-        if (aiMsgError) throw aiMsgError;
-
-        // Update relationship level
+        const { data: aiMsg } = await supabase.from('messages').insert({ chat_id: chatId, user_id: req.session.userId, role: 'assistant', content: aiResponse }).select().single();
         const newRel = Math.min(100, (chat.relationship_level || 0) + 1);
-        await supabase
-            .from('chats')
-            .update({
-                relationship_level: newRel,
-                updated_at: new Date()
-            })
-            .eq('id', chatId);
+        await supabase.from('chats').update({ relationship_level: newRel, updated_at: new Date() }).eq('id', chatId);
 
-        // Update chat title for new chats
-        const { count: msgCount } = await supabase
-            .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('chat_id', chatId);
+        const { count: mc } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('chat_id', chatId);
+        if (mc <= 2) { const title = content.substring(0, 50) + (content.length > 50 ? '...' : ''); await supabase.from('chats').update({ title }).eq('id', chatId); }
 
-        if (msgCount <= 2) {
-            const title = content.substring(0, 50) + (content.length > 50 ? '...' : '');
-            await supabase.from('chats').update({ title }).eq('id', chatId);
-        }
-
-        res.json({
-            userMessage,
-            aiMessage,
-            aiSource,
-            relationshipLevel: newRel,
-            historyCount: history.length,
-            remaining: limit === Infinity ? Infinity : Math.max(0, limit - (currentCount + 1))
-        });
-    } catch (error) {
-        console.error('Message error:', error);
-        res.status(500).json({ error: 'Failed to send message' });
-    }
+        res.json({ userMessage: { role: 'user', content }, aiMessage: aiMsg, aiSource: source, relationshipLevel: newRel, remaining: Math.max(0, limit - (currentCount + 1)) });
+    } catch (e) { console.error('Message error:', e); res.status(500).json({ error: e.message }); }
 });
 
 // Update chat mood
@@ -1323,17 +987,10 @@ app.put('/api/chats/:chatId/mood', requireAuth, async (req, res) => {
         const { mood } = req.body;
         const validMoods = ['happy', 'neutral', 'annoyed', 'clingy', 'sleepy', 'caring', 'adult'];
         if (!validMoods.includes(mood)) return res.status(400).json({ error: 'Invalid mood' });
-        
-        // Cek adult mode hanya premium/owner
-        if (mood === 'adult' && req.session.userRole !== 'premium' && req.session.userRole !== 'owner') {
-            return res.status(403).json({ error: 'Adult mode requires Premium/Owner' });
-        }
-        
+        if (mood === 'adult' && req.session.userRole !== 'premium' && req.session.userRole !== 'owner') return res.status(403).json({ error: 'Adult mode requires Premium/Owner' });
         await supabase.from('chats').update({ mood }).eq('id', req.params.chatId).eq('user_id', req.session.userId);
         res.json({ success: true, mood });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update mood' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Failed to update mood' }); }
 });
 
 // ============================================
@@ -1342,242 +999,41 @@ app.put('/api/chats/:chatId/mood', requireAuth, async (req, res) => {
 app.get('/api/user/stats', requireAuth, async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];
-        const { data: user } = await supabase
-            .from('users')
-            .select('daily_message_count, last_message_date, role')
-            .eq('id', req.session.userId)
-            .single();
-        
+        const { data: user } = await supabase.from('users').select('daily_message_count, last_message_date, role').eq('id', req.session.userId).single();
         const limit = getLimit(user.role);
         const used = user.last_message_date === today ? user.daily_message_count : 0;
-        
-        res.json({
-            role: user.role,
-            dailyLimit: limit,
-            used,
-            remaining: Math.max(0, limit - used)
-        });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get stats' });
-    }
+        res.json({ role: user.role, dailyLimit: limit, used, remaining: Math.max(0, limit - used) });
+    } catch (error) { res.status(500).json({ error: 'Failed to get stats' }); }
 });
 
 // ============================================
 // AI PACKAGES (OWNER)
 // ============================================
-app.get('/api/owner/packages', requireRole('owner'), async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('ai_packages')
-            .select('*')
-            .order('name');
-        
-        if (error) throw error;
-        res.json({ packages: data || [] });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get packages' });
-    }
-});
-
-app.post('/api/owner/packages', requireRole('owner'), async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('ai_packages')
-            .insert(req.body)
-            .select()
-            .single();
-        
-        if (error) throw error;
-        res.json({ package: data });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to create package' });
-    }
-});
-
-app.put('/api/owner/packages/:id', requireRole('owner'), async (req, res) => {
-    try {
-        const { error } = await supabase
-            .from('ai_packages')
-            .update(req.body)
-            .eq('id', req.params.id);
-        
-        if (error) throw error;
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update package' });
-    }
-});
-
-app.delete('/api/owner/packages/:id', requireRole('owner'), async (req, res) => {
-    try {
-        const { error } = await supabase
-            .from('ai_packages')
-            .delete()
-            .eq('id', req.params.id);
-        
-        if (error) throw error;
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to delete package' });
-    }
-});
+app.get('/api/owner/packages', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('ai_packages').select('*').order('name'); res.json({ packages: data || [] }); });
+app.post('/api/owner/packages', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('ai_packages').insert(req.body).select().single(); res.json({ package: data }); });
+app.put('/api/owner/packages/:id', requireRole('owner'), async (req, res) => { await supabase.from('ai_packages').update(req.body).eq('id', req.params.id); res.json({ success: true }); });
+app.delete('/api/owner/packages/:id', requireRole('owner'), async (req, res) => { await supabase.from('ai_packages').delete().eq('id', req.params.id); res.json({ success: true }); });
 
 // ============================================
 // OWNER ROUTES
 // ============================================
-
 app.get('/api/owner/stats', requireRole('owner'), async (req, res) => {
-    try {
-        const [users, chats, messages, characters] = await Promise.all([
-            supabase.from('users').select('*', { count: 'exact', head: true }),
-            supabase.from('chats').select('*', { count: 'exact', head: true }),
-            supabase.from('messages').select('*', { count: 'exact', head: true }),
-            supabase.from('characters').select('*', { count: 'exact', head: true })
-        ]);
-        res.json({
-            users: users.count || 0,
-            chats: chats.count || 0,
-            messages: messages.count || 0,
-            characters: characters.count || 0
-        });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get stats' });
-    }
+    const [u,c,m,ch] = await Promise.all([supabase.from('users').select('*',{count:'exact',head:true}),supabase.from('chats').select('*',{count:'exact',head:true}),supabase.from('messages').select('*',{count:'exact',head:true}),supabase.from('characters').select('*',{count:'exact',head:true})]);
+    res.json({ users:u.count||0, chats:c.count||0, messages:m.count||0, characters:ch.count||0 });
 });
-
-app.get('/api/owner/users', requireRole('owner'), async (req, res) => {
-    try {
-        const { data: users, error } = await supabase
-            .from('users')
-            .select('*')
-            .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        const safe = users.map(({ password_hash, ...u }) => u);
-        res.json({ users: safe });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get users' });
-    }
-});
-
+app.get('/api/owner/users', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('users').select('*').order('created_at',{ascending:false}); res.json({ users:(data||[]).map(({password_hash,...u})=>u) }); });
 app.put('/api/owner/users/:userId', requireRole('owner'), async (req, res) => {
-    try {
-        const updates = {};
-        const allowedFields = ['role', 'premium_expired_at', 'is_banned', 'daily_message_count', 'last_message_date', 'gender'];
-        
-        for (const f of allowedFields) {
-            if (req.body[f] !== undefined) updates[f] = req.body[f];
-        }
-        
-        const { error } = await supabase
-            .from('users')
-            .update(updates)
-            .eq('id', req.params.userId);
-        
-        if (error) throw error;
-        
-        await supabase.from('logs').insert({
-            user_id: req.session.userId,
-            action: 'user_updated',
-            details: { target: req.params.userId, updates },
-            ip_address: req.ip
-        });
-        
-        res.json({ message: 'User updated' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update user' });
-    }
+    const updates = {};
+    ['role','premium_expired_at','is_banned','daily_message_count','last_message_date','gender','verified'].forEach(k=>{ if(req.body[k]!==undefined) updates[k]=req.body[k]; });
+    await supabase.from('users').update(updates).eq('id',req.params.userId);
+    res.json({ success:true });
 });
-
-app.delete('/api/owner/users/:userId', requireRole('owner'), async (req, res) => {
-    try {
-        if (req.params.userId === req.session.userId) {
-            return res.status(400).json({ error: 'Cannot delete yourself' });
-        }
-        
-        const { error } = await supabase
-            .from('users')
-            .delete()
-            .eq('id', req.params.userId);
-        
-        if (error) throw error;
-        res.json({ message: 'User deleted' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to delete user' });
-    }
-});
-
-app.get('/api/owner/characters', requireRole('owner'), async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('characters')
-            .select('*, ai_packages(name)')
-            .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        res.json({ characters: data });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get characters' });
-    }
-});
-
-app.post('/api/owner/characters', requireRole('owner'), async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('characters')
-            .insert({ ...req.body, created_by: req.session.userId })
-            .select()
-            .single();
-        
-        if (error) throw error;
-        res.json({ character: data });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to create character' });
-    }
-});
-
-app.put('/api/owner/characters/:charId', requireRole('owner'), async (req, res) => {
-    try {
-        const { error } = await supabase
-            .from('characters')
-            .update(req.body)
-            .eq('id', req.params.charId);
-        
-        if (error) throw error;
-        res.json({ message: 'Character updated' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update character' });
-    }
-});
-
-app.delete('/api/owner/characters/:charId', requireRole('owner'), async (req, res) => {
-    try {
-        const { error } = await supabase
-            .from('characters')
-            .delete()
-            .eq('id', req.params.charId);
-        
-        if (error) throw error;
-        res.json({ message: 'Character deleted' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to delete character' });
-    }
-});
-
-app.get('/api/owner/logs', requireRole('owner'), async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('logs')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(100);
-        
-        if (error) throw error;
-        res.json({ logs: data });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get logs' });
-    }
-});
+app.delete('/api/owner/users/:userId', requireRole('owner'), async (req, res) => { if (req.params.userId===req.session.userId) return res.status(400).json({ error:'Cannot delete yourself' }); await supabase.from('users').delete().eq('id',req.params.userId); res.json({ success:true }); });
+app.get('/api/owner/characters', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('characters').select('*, ai_packages(name)').order('created_at',{ascending:false}); res.json({ characters:data }); });
+app.post('/api/owner/characters', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('characters').insert({...req.body,created_by:req.session.userId}).select().single(); res.json({ character:data }); });
+app.put('/api/owner/characters/:charId', requireRole('owner'), async (req, res) => { await supabase.from('characters').update(req.body).eq('id',req.params.charId); res.json({ success:true }); });
+app.delete('/api/owner/characters/:charId', requireRole('owner'), async (req, res) => { await supabase.from('characters').delete().eq('id',req.params.charId); res.json({ success:true }); });
+app.get('/api/owner/logs', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('logs').select('*').order('created_at',{ascending:false}).limit(100); res.json({ logs:data }); });
 
 // ============================================
 // SERVER START
@@ -1587,16 +1043,9 @@ if (process.env.NODE_ENV !== 'production') {
         console.log('============================================');
         console.log('✨ c.ai By MikuHost - Server Ready');
         console.log(`📱 http://localhost:${PORT}`);
-        console.log(`💬 Chat: http://localhost:${PORT}/chat.html`);
-        console.log(`👑 Owner: http://localhost:${PORT}/owner.html`);
+        console.log(`📧 Email OTP Verification: ON`);
+        console.log(`🔑 Login: username OR email`);
         console.log(`🤖 ChatEverywhere + Gemini + Neosantara + Custom`);
-        console.log(`📦 Packages: /api/owner/packages`);
-        console.log(`🧠 Context: 10 messages history`);
-        console.log(`🎭 Mood system: 7 moods (including adult)`);
-        console.log(`👫 Gender-based prompts: ON`);
-        console.log(`🔞 Adult mode: Premium/Owner`);
-        console.log(`🔄 Retry logic: 3 attempts with backoff`);
-        console.log(`🖼️ OG Image: /og-image.png`);
         console.log('============================================');
     });
 }
