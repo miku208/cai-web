@@ -48,8 +48,12 @@
         .badge.owner { background:rgba(34,197,94,0.2);color:#4ade80; }
         .badge.banned { background:rgba(239,68,68,0.2);color:#f87171; }
         .badge.online { background:rgba(34,197,94,0.2);color:#4ade80; }
+        .badge.offline { background:rgba(239,68,68,0.2);color:#f87171; }
+        .badge.maintenance { background:rgba(245,158,11,0.2);color:#fbbf24; }
         .badge.private { background:rgba(239,68,68,0.2);color:#f87171; }
         .badge.premium-only { background:rgba(245,158,11,0.2);color:#fbbf24; }
+        .badge.male { background:rgba(59,130,246,0.2);color:#60a5fa; }
+        .badge.female { background:rgba(236,72,153,0.2);color:#f472b6; }
         
         .btn { padding:10px 20px; border-radius:10px; border:none; cursor:pointer; font-family:inherit; font-weight:600; font-size:13px; }
         .btn-p { background:var(--acc);color:white; }
@@ -148,7 +152,7 @@
                     <button class="btn btn-p" onclick="showAddForm()">+ Add AI</button>
                 </div>
                 <div class="table-wrap">
-                    <div class="table-scroll"><table><thead><tr><th>Avatar</th><th>Name</th><th>Package</th><th>Status</th><th>Visibility</th><th>Actions</th></tr></thead><tbody id="charsBody"><tr><td colspan="6" class="text-c">Loading...</td></tr></tbody></table></div>
+                    <div class="table-scroll"><table><thead><tr><th>Avatar</th><th>Name</th><th>Gender</th><th>Package</th><th>Status</th><th>Visibility</th><th>Actions</th></tr></thead><tbody id="charsBody"><tr><td colspan="7" class="text-c">Loading...</td></tr></tbody></table></div>
                 </div>
             </div>
             
@@ -207,6 +211,7 @@
                 <div class="form-g"><label>Avatar (emoji or URL)</label><input type="text" id="cAvatar" placeholder="🤖 or https://..."></div>
                 <div class="form-g"><label>Description</label><textarea id="cDesc" rows="2"></textarea></div>
                 <div class="form-g"><label>System Prompt *</label><textarea id="cPrompt" rows="4" required></textarea></div>
+                <div class="form-g"><label>Gender *</label><select id="cGender" required><option value="female">Female ♀</option><option value="male">Male ♂</option></select></div>
                 <div class="form-g"><label>Package</label><select id="cPackage"><option value="">Default (ChatEverywhere)</option></select></div>
                 <div class="form-g"><label>Endpoint URL (override)</label><input type="text" id="cEndpoint" placeholder="Leave empty to use package URL"></div>
                 <div class="form-g"><label>Model Name</label><input type="text" id="cModel" value="gpt-4"></div>
@@ -305,7 +310,7 @@
                 var d = await api('/api/owner/characters');
                 allChars = d.characters || [];
                 document.getElementById('charsBody').innerHTML = allChars.map(function(c) {
-                    return '<tr><td style="font-size:22px;">' + (c.avatar_url&&c.avatar_url.startsWith('http')?'<img src="'+c.avatar_url+'" style="width:30px;height:30px;border-radius:50%;object-fit:cover;" onerror="this.outerHTML=\'🤖\'">':c.avatar_url||'🤖') + '</td><td><strong>' + c.name + '</strong></td><td><span class="badge '+(c.ai_packages&&c.ai_packages.name?'premium':'online')+'">'+(c.ai_packages&&c.ai_packages.name?c.ai_packages.name:'ChatEverywhere')+'</span></td><td><span class="badge online">'+(c.status||'online')+'</span></td><td><span class="badge '+(c.visibility==='private'?'private':c.visibility==='premium-only'?'premium-only':'online')+'">'+(c.visibility||'public')+'</span></td><td><button class="btn-sm p" onclick="editChar(\''+c.id+'\')">✏️ Edit</button> <button class="btn-sm d" onclick="delChar(\''+c.id+'\')">🗑️</button></td></tr>';
+                    return '<tr><td style="font-size:22px;">' + (c.avatar_url&&c.avatar_url.startsWith('http')?'<img src="'+c.avatar_url+'" style="width:30px;height:30px;border-radius:50%;object-fit:cover;" onerror="this.outerHTML=\'🤖\'">':c.avatar_url||'🤖') + '</td><td><strong>' + c.name + '</strong></td><td><span class="badge '+(c.gender==='male'?'male':'female')+'">'+(c.gender==='male'?'♂ Male':'♀ Female')+'</span></td><td><span class="badge '+(c.ai_packages&&c.ai_packages.name?'premium':'online')+'">'+(c.ai_packages&&c.ai_packages.name?c.ai_packages.name:'ChatEverywhere')+'</span></td><td><span class="badge '+(c.status==='offline'?'offline':c.status==='maintenance'?'maintenance':'online')+'">'+(c.status||'online')+'</span></td><td><span class="badge '+(c.visibility==='private'?'private':c.visibility==='premium-only'?'premium-only':'online')+'">'+(c.visibility||'public')+'</span></td><td><button class="btn-sm p" onclick="editChar(\''+c.id+'\')">✏️ Edit</button> <button class="btn-sm d" onclick="delChar(\''+c.id+'\')">🗑️</button></td></tr>';
                 }).join('');
             } catch(e) {}
         }
@@ -374,6 +379,7 @@
             document.getElementById('editId').value = '';
             document.getElementById('charModalTitle').textContent = 'Add AI Character';
             document.getElementById('charForm').reset();
+            document.getElementById('cGender').value = 'female';
             document.getElementById('cStatus').value = 'online';
             document.getElementById('cVisibility').value = 'all';
             document.getElementById('cModel').value = 'gpt-4';
@@ -391,6 +397,7 @@
             document.getElementById('cEndpoint').value = c.endpoint_url || '';
             document.getElementById('cModel').value = c.model_name || 'gpt-4';
             document.getElementById('cPackage').value = c.package_id || '';
+            document.getElementById('cGender').value = c.gender || 'female';
             document.getElementById('cStatus').value = c.status || 'online';
             document.getElementById('cVisibility').value = c.visibility || 'all';
             document.getElementById('charModal').classList.remove('hidden');
@@ -408,6 +415,7 @@
                 endpoint_url: document.getElementById('cEndpoint').value,
                 model_name: document.getElementById('cModel').value,
                 package_id: document.getElementById('cPackage').value || null,
+                gender: document.getElementById('cGender').value,
                 status: document.getElementById('cStatus').value,
                 visibility: document.getElementById('cVisibility').value
             };

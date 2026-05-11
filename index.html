@@ -102,13 +102,14 @@
 
     .form-group { margin-bottom: 14px; }
     .form-group label { display: block; margin-bottom: 5px; color: var(--text-secondary); font-size: 12px; font-weight: 500; }
-    .form-group input {
+    .form-group input, .form-group select {
       width: 100%; padding: 11px 14px; background: var(--input-bg);
       border: 1px solid var(--glass-border); border-radius: 10px;
       color: var(--text); font-size: 14px; transition: all 0.3s;
       font-family: inherit; outline: none;
     }
-    .form-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15); }
+    .form-group select option { background: var(--card-bg); color: var(--text); }
+    .form-group input:focus, .form-group select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.15); }
 
     .btn {
       width: 100%; padding: 12px; border: none; border-radius: 12px;
@@ -120,6 +121,26 @@
     .error-msg { color: var(--danger); font-size: 12px; text-align: center; margin-top: 6px; min-height: 18px; }
     .form-panel { display: none; }
     .form-panel.active { display: block; }
+
+    /* FEATURE GUIDE */
+    .feature-guide {
+      margin-top: 14px; text-align: left; padding: 16px 14px;
+      background: var(--glass-bg); border: 1px solid var(--glass-border);
+      border-radius: 16px; backdrop-filter: blur(10px);
+    }
+    .feature-guide h4 {
+      font-size: 13px; margin-bottom: 10px; color: var(--text);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .feature-guide h4 span { font-size: 18px; }
+    .feature-guide ul {
+      list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px;
+    }
+    .feature-guide ul li {
+      font-size: 11px; color: var(--text-secondary); padding: 6px 10px;
+      background: var(--input-bg); border-radius: 8px; line-height: 1.5;
+    }
+    .feature-guide ul li strong { color: var(--text); }
 
     /* SUPPORT SECTION */
     .support-section {
@@ -226,10 +247,33 @@
           <div class="form-group"><label>Username</label><input type="text" id="reg-username" placeholder="Choose username" required minlength="3"></div>
           <div class="form-group"><label>Password</label><input type="password" id="reg-password" placeholder="Create password" required minlength="6"></div>
           <div class="form-group"><label>Confirm Password</label><input type="password" id="reg-confirm" placeholder="Confirm password" required minlength="6"></div>
+          <div class="form-group">
+            <label>Gender</label>
+            <select id="reg-gender" required>
+              <option value="">Select your gender...</option>
+              <option value="male">Male ♂</option>
+              <option value="female">Female ♀</option>
+            </select>
+          </div>
           <button type="submit" class="btn btn-primary">Register</button>
           <div class="error-msg" id="reg-error"></div>
         </form>
       </div>
+    </div>
+
+    <!-- FEATURE GUIDE -->
+    <div class="feature-guide">
+      <h4><span>📋</span> Fitur yang Tersedia</h4>
+      <ul>
+        <li><strong>🤖 AI Characters</strong> — Pilih dari berbagai karakter AI dengan kepribadian unik</li>
+        <li><strong>🎭 Mood System</strong> — Ubah mood AI (Happy, Clingy, Annoyed, Sleepy, Caring, Adult)</li>
+        <li><strong>💕 Relationship</strong> — Bangun relationship level 0-100 dengan AI</li>
+        <li><strong>👫 Gender Detection</strong> — AI otomatis menyesuaikan sikap berdasarkan gender kamu</li>
+        <li><strong>🔞 Adult Mode</strong> — Khusus Premium/Owner, unlock percakapan tanpa batas</li>
+        <li><strong>⚤ Ganti Gender</strong> — Bisa ubah gender kapan saja di menu chat</li>
+        <li><strong>🔑 Ganti Password</strong> — Amankan akunmu</li>
+        <li><strong>🗑️ Clear History</strong> — Reset percakapan kapan saja</li>
+      </ul>
     </div>
 
     <!-- SUPPORT SECTION -->
@@ -307,15 +351,17 @@
       var username = document.getElementById('reg-username').value.trim();
       var password = document.getElementById('reg-password').value;
       var confirm = document.getElementById('reg-confirm').value;
+      var gender = document.getElementById('reg-gender').value;
       var errorEl = document.getElementById('reg-error');
       errorEl.textContent = '';
       if (password !== confirm) { errorEl.textContent = 'Passwords do not match'; return; }
       if (username.length < 3) { errorEl.textContent = 'Username min 3 chars'; return; }
       if (password.length < 6) { errorEl.textContent = 'Password min 6 chars'; return; }
+      if (!gender) { errorEl.textContent = 'Please select your gender'; return; }
       try {
         var res = await fetch('/api/auth/register', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: username, password: password })
+          body: JSON.stringify({ username: username, password: password, gender: gender })
         });
         var data = await res.json();
         if (data.error) { errorEl.textContent = data.error; showToast(data.error, 'error'); return; }

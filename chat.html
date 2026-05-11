@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>AI Chat</title>
+    <title>AI Chat - c.ai By MikuHost</title>
     <style>
         :root {
             --bg: #0a0a0f; --sb: #121217; --card: #1a1b23;
@@ -54,13 +54,18 @@
         
         .mood-wrap { position:relative; flex-shrink:0; }
         .mood-btn { display:flex;align-items:center;gap:5px;background:var(--card);padding:6px 10px;border-radius:20px;cursor:pointer;user-select:none;font-size:12px;border:1px solid var(--border); }
+        .mood-btn.adult-active { border-color:#ef4444; box-shadow:0 0 8px rgba(239,68,68,0.3); }
         .mood-e { font-size:18px; }
         .mood-t { font-size:10px;color:var(--muted); }
-        .mood-dd { position:absolute;top:110%;right:0;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:4px;display:none;flex-direction:column;gap:2px;z-index:10;min-width:130px;box-shadow:0 8px 24px rgba(0,0,0,0.5); }
+        .mood-dd { position:absolute;top:110%;right:0;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:4px;display:none;flex-direction:column;gap:2px;z-index:10;min-width:140px;box-shadow:0 8px 24px rgba(0,0,0,0.5); }
         .mood-dd.show { display:flex; }
         .mood-opt { display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:12px;white-space:nowrap;border:none;background:none;color:var(--text);font-family:inherit;text-align:left; }
         .mood-opt:hover { background:rgba(124,58,237,0.15); }
         .mood-opt.active { background:rgba(124,58,237,0.3);font-weight:600; }
+        .mood-opt.adult-mood { color:#ef4444; }
+        .mood-opt.adult-mood:hover { background:rgba(239,68,68,0.15); }
+        .mood-opt.adult-mood.active { background:rgba(239,68,68,0.3);font-weight:600; }
+        .mood-opt.adult-mood.locked { opacity:0.4; cursor:not-allowed; }
         
         .rel-bar { height:3px;background:rgba(255,255,255,0.1);border-radius:2px;margin-top:2px;overflow:hidden; }
         .rel-fill { height:100%;background:linear-gradient(90deg,#7c3aed,#a855f7);border-radius:2px;transition:width .5s; }
@@ -90,28 +95,21 @@
         .modal.hidden { display:none; }
         .modal-b { background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:90%;max-width:400px; }
         .modal-b h3 { margin-bottom:12px;font-size:16px; }
-        .modal-b button { padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-family:inherit; }
-        .btn-p { background:var(--acc);color:white; }
-        .btn-s { background:rgba(255,255,255,0.04);color:var(--text);border:1px solid var(--border); }
-        
-        .form-group { margin-bottom:12px; }
-        .form-group label { display:block;margin-bottom:4px;color:var(--muted);font-size:12px;font-weight:500; }
-        .form-group input { width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;outline:none; }
-        .form-group input:focus { border-color:var(--acc); }
+        .btn-p { background:var(--acc);color:white; padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-family:inherit; }
+        .btn-s { background:rgba(255,255,255,0.04);color:var(--text);border:1px solid var(--border); padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit; }
+        .form-group { margin-bottom:12px; } .form-group label { display:block;margin-bottom:4px;color:var(--muted);font-size:12px; }
+        .form-group input, .form-group select { width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;outline:none; }
+        .form-group select option { background:var(--card);color:var(--text); }
         
         .toast { position:fixed;bottom:70px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:10px;color:white;font-weight:500;z-index:200;font-size:12px;animation:fadeUp .3s;pointer-events:none; }
-        .toast.ok { background:var(--green); }
-        .toast.err { background:var(--red); }
-        .toast.inf { background:var(--acc); }
+        .toast.ok { background:var(--green); } .toast.err { background:var(--red); } .toast.inf { background:var(--acc); }
         @keyframes fadeUp { from{opacity:0;transform:translateX(-50%) translateY(8px);} to{opacity:1;transform:translateX(-50%) translateY(0);} }
-        
         .hidden { display:none !important; }
         
         @media (max-width:768px) {
             .sidebar { position:fixed;transform:translateX(-100%); }
             .sidebar.open { transform:translateX(0);box-shadow:4px 0 20px rgba(0,0,0,0.5); }
-            .ham { display:block; }
-            .mood-t { display:none; }
+            .ham { display:block; } .mood-t { display:none; }
         }
     </style>
 </head>
@@ -130,8 +128,10 @@
                     <div><div class="u-nm" id="uNm">User</div><div class="u-rl" id="uRl">user</div></div>
                 </div>
                 <div style="display:flex;flex-direction:column;gap:3px;">
-                    <a href="/owner.html" class="btn-o" id="btnOwner">👑</a>
+                    <a href="/owner" class="btn-o" id="btnOwner">👑</a>
+                    <button class="btn-pass" onclick="showGenderModal()">⚤ Gender</button>
                     <button class="btn-pass" onclick="showPassModal()">🔑 Pass</button>
+                    <button class="btn-x" onclick="clearHistory()">🗑️ Clear</button>
                     <button class="btn-x" onclick="logout()">Logout</button>
                 </div>
             </div>
@@ -143,17 +143,11 @@
                 <div class="h-inf">
                     <div class="h-nm" id="hNm">Select an AI</div>
                     <div class="h-st"><span class="dot"></span> <span id="hSt">Online</span></div>
-                    <div style="display:flex;align-items:center;gap:6px;">
-                        <div class="rel-bar" style="flex:1;max-width:100px;"><div class="rel-fill" id="relFill" style="width:0%;"></div></div>
-                        <span style="font-size:10px;color:var(--muted);" id="relText">0/100</span>
-                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;"><div class="rel-bar" style="flex:1;max-width:100px;"><div class="rel-fill" id="relFill" style="width:0%;"></div></div><span style="font-size:10px;color:var(--muted);" id="relText">0/100</span></div>
                 </div>
-                
                 <div class="mood-wrap">
-                    <div class="mood-btn" onclick="toggleMood()">
-                        <span class="mood-e" id="moodE">😐</span>
-                        <span class="mood-t" id="moodT">neutral</span>
-                        <span style="font-size:8px;">▾</span>
+                    <div class="mood-btn" id="moodBtn" onclick="toggleMood()">
+                        <span class="mood-e" id="moodE">😐</span><span class="mood-t" id="moodT">neutral</span><span style="font-size:8px;">▾</span>
                     </div>
                     <div class="mood-dd" id="moodDD">
                         <button class="mood-opt active" data-m="neutral" onclick="event.stopPropagation();changeMood('neutral')">😐 Neutral</button>
@@ -162,233 +156,162 @@
                         <button class="mood-opt" data-m="annoyed" onclick="event.stopPropagation();changeMood('annoyed')">😤 Annoyed</button>
                         <button class="mood-opt" data-m="sleepy" onclick="event.stopPropagation();changeMood('sleepy')">😴 Sleepy</button>
                         <button class="mood-opt" data-m="caring" onclick="event.stopPropagation();changeMood('caring')">🤗 Caring</button>
+                        <button class="mood-opt adult-mood" data-m="adult" onclick="event.stopPropagation();changeMood('adult')">🔞 Adult</button>
                     </div>
                 </div>
             </header>
-            <div class="msgs" id="msgs">
-                <div class="welcome"><span>💬</span><h2 style="color:var(--text);margin-bottom:4px;">Select an AI Character</h2><p>Choose from the sidebar to start chatting</p></div>
-            </div>
+            <div class="msgs" id="msgs"><div class="welcome"><span>💬</span><h2 style="color:var(--text);">Select an AI Character</h2><p>Choose from the sidebar to start chatting</p></div></div>
             <div class="limit" id="limit">Messages: --/--</div>
             <div class="inp-area hidden" id="inpArea">
-                <div class="inp-wrap">
-                    <textarea id="chatInput" placeholder="Type a message..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px';"></textarea>
-                    <button class="snd" id="sndBtn" onclick="sendMsg()">➤</button>
-                </div>
+                <div class="inp-wrap"><textarea id="chatInput" placeholder="Type a message..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px';"></textarea><button class="snd" id="sndBtn" onclick="sendMsg()">➤</button></div>
             </div>
         </main>
     </div>
 
-    <!-- Limit Modal -->
-    <div class="modal hidden" id="limitModal">
-        <div class="modal-b" style="text-align:center;">
-            <span style="font-size:40px;">✨</span><h3>Daily Limit Reached</h3><p style="color:var(--muted);margin-bottom:16px;">Come back tomorrow! 🌙</p>
-            <button class="btn-p" onclick="document.getElementById('limitModal').classList.add('hidden')">Got it</button>
-        </div>
-    </div>
-
-    <!-- Password Modal -->
-    <div class="modal hidden" id="passModal">
-        <div class="modal-b">
-            <h3>🔑 Change Password</h3>
-            <div class="form-group"><label>Current Password</label><input type="password" id="currPass" placeholder="Enter current password"></div>
-            <div class="form-group"><label>New Password (min 6 chars)</label><input type="password" id="newPass" placeholder="Enter new password"></div>
-            <div class="form-group"><label>Confirm New Password</label><input type="password" id="confPass" placeholder="Repeat new password"></div>
-            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
-                <button class="btn-s" onclick="closePassModal()">Cancel</button>
-                <button class="btn-p" onclick="changePassword()">Save</button>
-            </div>
-        </div>
-    </div>
+    <div class="modal hidden" id="limitModal"><div class="modal-b" style="text-align:center;"><span style="font-size:40px;">✨</span><h3>Daily Limit Reached</h3><p style="color:var(--muted);">Come back tomorrow! 🌙</p><button class="btn-p" onclick="document.getElementById('limitModal').classList.add('hidden')">Got it</button></div></div>
+    <div class="modal hidden" id="passModal"><div class="modal-b"><h3>🔑 Change Password</h3>
+        <div class="form-group"><label>Current Password</label><input type="password" id="currPass"></div>
+        <div class="form-group"><label>New Password</label><input type="password" id="newPass"></div>
+        <div class="form-group"><label>Confirm</label><input type="password" id="confPass"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;"><button class="btn-s" onclick="closePassModal()">Cancel</button><button class="btn-p" onclick="changePassword()">Save</button></div>
+    </div></div>
+    <div class="modal hidden" id="genderModal"><div class="modal-b"><h3>⚤ Change Gender</h3>
+        <p style="color:var(--muted);font-size:12px;">This affects how AI treats you</p>
+        <div class="form-group"><label>Your Gender</label><select id="userGender"><option value="male">Male</option><option value="female">Female</option></select></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;"><button class="btn-s" onclick="closeGenderModal()">Cancel</button><button class="btn-p" onclick="changeGender()">Save</button></div>
+    </div></div>
 
     <script>
-        async function api(url, opt = {}) {
-            const r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opt });
-            const d = await r.json();
+        async function api(url, opt) {
+            opt = opt || {};
+            var r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opt });
+            var d = await r.json();
             if (!r.ok) throw new Error(d.error || 'Error');
             return d;
         }
         
-        const MOODS = { happy:'😊', neutral:'😐', clingy:'🥺', annoyed:'😤', sleepy:'😴', caring:'🤗' };
-        let user = null, ai = null, ais = [], chatId = null, busy = false;
-        let mood = 'neutral', relLevel = 0;
+        var MOODS = { happy:'😊', neutral:'😐', clingy:'🥺', annoyed:'😤', sleepy:'😴', caring:'🤗', adult:'🔞' };
+        var user = null, ai = null, ais = [], chatId = null, busy = false;
+        var mood = 'neutral', relLevel = 0;
         
-        function saveLS() { try { localStorage.setItem('lc', JSON.stringify({cid:chatId, mid:ai?.id, mood, rel:relLevel, t:Date.now()})); } catch(e) {} }
-        function loadLS() { try { const d = JSON.parse(localStorage.getItem('lc')); if (d && Date.now()-d.t < 864e5) return d; } catch(e) {} return null; }
-        function getBadge(v) {
-            if (v === 'private') return '<span class="ai-badge private">🔒 Private</span>';
-            if (v === 'premium-only') return '<span class="ai-badge premium">⭐ Premium</span>';
-            return '';
-        }
+        function saveLS() { try { localStorage.setItem('lc', JSON.stringify({cid:chatId, mid:ai?ai.id:null, mood:mood, rel:relLevel, t:Date.now()})); } catch(e) {} }
+        function loadLS() { try { var d = JSON.parse(localStorage.getItem('lc')); if (d && Date.now()-d.t < 864e5) return d; } catch(e) {} return null; }
+        function getBadge(v) { if (v === 'private') return '<span class="ai-badge private">🔒 Private</span>'; if (v === 'premium-only') return '<span class="ai-badge premium">⭐ Premium</span>'; return ''; }
         
-        (async () => {
+        (async function() {
             try {
-                const d = await api('/api/auth/me');
-                user = d.user;
+                var d = await api('/api/auth/me'); user = d.user;
                 document.getElementById('uAv').textContent = user.username[0].toUpperCase();
                 document.getElementById('uNm').textContent = user.username;
                 document.getElementById('uRl').textContent = user.role;
                 if (user.role === 'owner') document.getElementById('btnOwner').style.display = 'block';
-                
-                await refreshAIs();
-                updLimit();
-                
-                const last = loadLS();
-                if (last?.mid) {
-                    const a = ais.find(x => x.id === last.mid);
-                    if (a) { mood = last.mood || 'neutral'; relLevel = last.rel || 0; selectAI(a, last.cid); updMoodUI(); updRelUI(); return; }
-                }
+                await refreshAIs(); updLimit();
+                var last = loadLS();
+                if (last && last.mid) { var a = ais.find(function(x) { return x.id === last.mid; }); if (a) { mood = last.mood || 'neutral'; relLevel = last.rel || 0; selectAI(a, last.cid); updMoodUI(); updRelUI(); return; } }
                 if (ais.length) selectAI(ais[0]);
             } catch(e) { location.href = '/'; }
         })();
-        
         setInterval(refreshAIs, 30000);
         
         function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('on'); refreshAIs(); }
         function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('on'); }
-        function toast(m, t='inf') { const e = document.createElement('div'); e.className = 'toast ' + (t==='error'?'err':t==='success'?'ok':'inf'); e.textContent = m; document.body.appendChild(e); setTimeout(() => e.remove(), 2500); }
+        function toast(m, t) { t = t || 'inf'; var e = document.createElement('div'); e.className = 'toast ' + (t==='error'?'err':t==='success'?'ok':'inf'); e.textContent = m; document.body.appendChild(e); setTimeout(function() { e.remove(); }, 2500); }
         
-        async function refreshAIs() {
-            try { const d = await api('/api/characters'); ais = d.characters || []; renderSidebar(); } catch(e) {}
-        }
+        async function refreshAIs() { try { var d = await api('/api/characters'); ais = d.characters || []; renderSidebar(); } catch(e) {} }
         
         function renderSidebar() {
-            const el = document.getElementById('aiList');
-            el.innerHTML = ais.map(a => `
-                <div class="ai-item ${ai?.id === a.id ? 'active' : ''}" onclick="selectAIById('${a.id}')">
-                    <div class="ai-av">${a.avatar_url?.startsWith('http') ? `<img src="${a.avatar_url}" onerror="this.parentElement.textContent='🤖'">` : (a.avatar_url || '🤖')}</div>
-                    <div class="ai-inf"><div class="n">${a.name}</div><div class="d">${a.description || a.status || 'Online'}</div>${getBadge(a.visibility)}</div>
-                </div>
-            `).join('') || '<div style="text-align:center;color:var(--muted);padding:20px;">No AI found</div>';
+            var el = document.getElementById('aiList');
+            el.innerHTML = ais.map(function(a) {
+                var av = a.avatar_url && a.avatar_url.startsWith('http') ? '<img src="'+a.avatar_url+'" onerror="this.parentElement.textContent=\'🤖\'">' : (a.avatar_url || '🤖');
+                var gb = a.gender === 'male' ? ' <span style="font-size:9px;color:#60a5fa;">♂</span>' : (a.gender === 'female' ? ' <span style="font-size:9px;color:#f472b6;">♀</span>' : '');
+                return '<div class="ai-item '+(ai&&ai.id===a.id?'active':'')+'" onclick="selectAIById(\''+a.id+'\')"><div class="ai-av">'+av+'</div><div class="ai-inf"><div class="n">'+a.name+gb+'</div><div class="d">'+(a.description||a.status||'Online')+'</div>'+getBadge(a.visibility)+'</div></div>';
+            }).join('') || '<div style="text-align:center;color:var(--muted);">No AI found</div>';
         }
         
-        function filterAIs(q) {
-            const filtered = q ? ais.filter(a => a.name.toLowerCase().includes(q.toLowerCase())) : ais;
-            const el = document.getElementById('aiList');
-            el.innerHTML = filtered.map(a => `
-                <div class="ai-item ${ai?.id === a.id ? 'active' : ''}" onclick="selectAIById('${a.id}')">
-                    <div class="ai-av">${a.avatar_url?.startsWith('http') ? `<img src="${a.avatar_url}" onerror="this.parentElement.textContent='🤖'">` : (a.avatar_url || '🤖')}</div>
-                    <div class="ai-inf"><div class="n">${a.name}</div><div class="d">${a.description || a.status || 'Online'}</div>${getBadge(a.visibility)}</div>
-                </div>
-            `).join('') || '<div style="text-align:center;color:var(--muted);padding:20px;">No AI found</div>';
-        }
+        function filterAIs(q) { var f = q ? ais.filter(function(a) { return a.name.toLowerCase().includes(q.toLowerCase()); }) : ais; var el = document.getElementById('aiList'); el.innerHTML = f.map(function(a) { var av = a.avatar_url && a.avatar_url.startsWith('http') ? '<img src="'+a.avatar_url+'" onerror="this.parentElement.textContent=\'🤖\'">' : (a.avatar_url || '🤖'); var gb = a.gender === 'male' ? ' <span style="font-size:9px;color:#60a5fa;">♂</span>' : (a.gender === 'female' ? ' <span style="font-size:9px;color:#f472b6;">♀</span>' : ''); return '<div class="ai-item '+(ai&&ai.id===a.id?'active':'')+'" onclick="selectAIById(\''+a.id+'\')"><div class="ai-av">'+av+'</div><div class="ai-inf"><div class="n">'+a.name+gb+'</div><div class="d">'+(a.description||a.status||'Online')+'</div>'+getBadge(a.visibility)+'</div></div>'; }).join('') || '<div style="text-align:center;color:var(--muted);">No AI found</div>'; }
         
-        function selectAIById(id) { const a = ais.find(x => x.id === id); if (a) selectAI(a); closeSidebar(); }
+        function selectAIById(id) { var a = ais.find(function(x) { return x.id === id; }); if (a) selectAI(a); closeSidebar(); }
         
         function updMoodUI() {
+            var adultOpt = document.querySelector('.mood-opt.adult-mood');
+            if (user.role !== 'premium' && user.role !== 'owner') {
+                adultOpt.classList.add('locked');
+                adultOpt.title = 'Premium/Owner only';
+                if (mood === 'adult') mood = 'neutral';
+            } else {
+                adultOpt.classList.remove('locked');
+            }
             document.getElementById('moodE').textContent = MOODS[mood] || '😐';
-            document.getElementById('moodT').textContent = mood;
-            document.querySelectorAll('.mood-opt').forEach(o => o.classList.toggle('active', o.dataset.m === mood));
+            document.getElementById('moodT').textContent = mood === 'adult' ? 'adult' : mood;
+            document.getElementById('moodBtn').classList.toggle('adult-active', mood === 'adult');
+            document.querySelectorAll('.mood-opt').forEach(function(o) { o.classList.toggle('active', o.dataset.m === mood); });
         }
+        
         function toggleMood() { document.getElementById('moodDD').classList.toggle('show'); }
+        
         async function changeMood(m) {
-            mood = m; updMoodUI(); document.getElementById('moodDD').classList.remove('show');
-            if (chatId) { try { await api(`/api/chats/${chatId}/mood`, { method:'PUT', body: JSON.stringify({ mood: m }) }); } catch(e) {} }
+            if (m === 'adult' && user.role !== 'premium' && user.role !== 'owner') {
+                toast('🔞 Adult mode requires Premium/Owner access', 'error');
+                return;
+            }
+            mood = m;
+            updMoodUI(); document.getElementById('moodDD').classList.remove('show');
+            if (chatId) { try { await api('/api/chats/'+chatId+'/mood', { method:'PUT', body: JSON.stringify({ mood: m }) }); } catch(e) {} }
             saveLS();
         }
-        function updRelUI() {
-            document.getElementById('relFill').style.width = relLevel + '%';
-            document.getElementById('relText').textContent = relLevel + '/100';
-        }
-        document.addEventListener('click', e => { if (!e.target.closest('.mood-wrap')) document.getElementById('moodDD').classList.remove('show'); });
+        
+        function updRelUI() { document.getElementById('relFill').style.width = relLevel + '%'; document.getElementById('relText').textContent = relLevel + '/100'; }
+        document.addEventListener('click', function(e) { if (!e.target.closest('.mood-wrap')) document.getElementById('moodDD').classList.remove('show'); });
         
         async function selectAI(a, existingChatId) {
-            ai = a;
-            document.getElementById('msgs').innerHTML = '';
+            ai = a; document.getElementById('msgs').innerHTML = '';
             document.getElementById('hNm').textContent = a.name;
             document.getElementById('hSt').innerHTML = '<span class="dot"></span> ' + (a.status || 'Online');
             document.getElementById('inpArea').classList.remove('hidden');
-            
-            document.querySelectorAll('.ai-item').forEach(el => el.classList.remove('active'));
-            const items = [...document.querySelectorAll('.ai-item')];
-            const idx = ais.indexOf(a);
-            if (idx >= 0 && items[idx]) items[idx].classList.add('active');
-            
+            document.querySelectorAll('.ai-item').forEach(function(el) { el.classList.remove('active'); });
+            var items = [].slice.call(document.querySelectorAll('.ai-item'));
+            var idx = ais.indexOf(a); if (idx >= 0 && items[idx]) items[idx].classList.add('active');
             mood = 'neutral'; relLevel = 0;
-            
             try {
-                const chats = (await api('/api/chats')).chats || [];
-                let chat = existingChatId ? chats.find(c => c.id === existingChatId) : chats.find(c => c.character_id === a.id);
-                
-                if (chat) {
-                    chatId = chat.id;
-                    mood = chat.mood || 'neutral';
-                    relLevel = chat.relationship_level || 0;
-                } else {
-                    const d = await api('/api/chats', { method:'POST', body: JSON.stringify({ character_id: a.id }) });
-                    chatId = d.chat?.id;
-                }
-                
-                if (chatId) {
-                    const d = await api(`/api/chats/${chatId}/messages`);
-                    (d.messages || []).forEach(m => addBubble(m.role, m.content));
-                }
-                
+                var chats = (await api('/api/chats')).chats || [];
+                var chat = existingChatId ? chats.find(function(c) { return c.id === existingChatId; }) : chats.find(function(c) { return c.character_id === a.id; });
+                if (chat) { chatId = chat.id; mood = chat.mood || 'neutral'; relLevel = chat.relationship_level || 0; }
+                else { var d = await api('/api/chats', { method:'POST', body: JSON.stringify({ character_id: a.id }) }); chatId = d.chat ? d.chat.id : null; }
+                if (chatId) { var d = await api('/api/chats/'+chatId+'/messages'); (d.messages || []).forEach(function(m) { addBubble(m.role, m.content); }); }
                 updMoodUI(); updRelUI(); saveLS();
             } catch(e) { console.error(e); }
             document.getElementById('chatInput').focus();
         }
         
-        function addBubble(role, content) {
-            const d = document.createElement('div');
-            d.className = 'msg ' + (role === 'user' ? 'u' : 'a');
-            d.textContent = content;
-            document.getElementById('msgs').appendChild(d);
-            document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight;
-        }
+        function addBubble(role, content) { var d = document.createElement('div'); d.className = 'msg ' + (role === 'user' ? 'u' : 'a'); d.textContent = content; document.getElementById('msgs').appendChild(d); document.getElementById('msgs').scrollTop = document.getElementById('msgs').scrollHeight; }
         
         async function sendMsg() {
             if (busy || !chatId) return;
-            const inp = document.getElementById('chatInput'), txt = inp.value.trim();
-            if (!txt) return;
-            
-            busy = true; document.getElementById('sndBtn').disabled = true;
-            inp.value = ''; inp.style.height = 'auto';
+            var inp = document.getElementById('chatInput'), txt = inp.value.trim(); if (!txt) return;
+            busy = true; document.getElementById('sndBtn').disabled = true; inp.value = ''; inp.style.height = 'auto';
             addBubble('user', txt);
-            
-            const typingEl = document.createElement('div'); typingEl.className = 'typing'; typingEl.id = 'typing';
-            typingEl.innerHTML = '<span></span><span></span><span></span>';
-            document.getElementById('msgs').appendChild(typingEl);
-            
+            var te = document.createElement('div'); te.className = 'typing'; te.id = 'typing'; te.innerHTML = '<span></span><span></span><span></span>'; document.getElementById('msgs').appendChild(te);
             try {
-                const d = await api(`/api/chats/${chatId}/messages`, { method:'POST', body: JSON.stringify({ content: txt }) });
-                document.getElementById('typing')?.remove();
+                var d = await api('/api/chats/'+chatId+'/messages', { method:'POST', body: JSON.stringify({ content: txt }) });
+                var t = document.getElementById('typing'); if (t) t.remove();
                 if (d.aiMessage) addBubble('assistant', d.aiMessage.content);
                 if (d.relationshipLevel !== undefined) { relLevel = d.relationshipLevel; updRelUI(); }
                 updLimit(); saveLS();
-            } catch(e) {
-                document.getElementById('typing')?.remove();
-                if (e.message.includes('limit')) document.getElementById('limitModal').classList.remove('hidden');
-                else toast(e.message, 'error');
-            }
-            
-            busy = false; document.getElementById('sndBtn').disabled = false;
-            inp.focus();
+            } catch(e) { var t = document.getElementById('typing'); if (t) t.remove(); if (e.message.indexOf('limit') !== -1) document.getElementById('limitModal').classList.remove('hidden'); else toast(e.message, 'error'); }
+            busy = false; document.getElementById('sndBtn').disabled = false; inp.focus();
         }
         
-        async function updLimit() {
-            try { const d = await api('/api/user/stats'); document.getElementById('limit').textContent = d.role === 'owner' ? 'Unlimited' : `${d.remaining}/${d.dailyLimit}`; } catch(e) {}
-        }
+        async function updLimit() { try { var d = await api('/api/user/stats'); document.getElementById('limit').textContent = d.role === 'owner' ? 'Unlimited' : d.remaining+'/'+d.dailyLimit; } catch(e) {} }
         
-        // ==================== PASSWORD ====================
         function showPassModal() { document.getElementById('passModal').classList.remove('hidden'); document.getElementById('currPass').focus(); }
         function closePassModal() { document.getElementById('passModal').classList.add('hidden'); document.getElementById('currPass').value=''; document.getElementById('newPass').value=''; document.getElementById('confPass').value=''; }
+        async function changePassword() { var c = document.getElementById('currPass').value, n = document.getElementById('newPass').value, f = document.getElementById('confPass').value; if (!c||!n||!f) { toast('All fields required','error'); return; } if (n.length<6) { toast('Min 6 chars','error'); return; } if (n!==f) { toast('Not match','error'); return; } try { await api('/api/auth/password', { method:'PUT', body: JSON.stringify({ currentPassword: c, newPassword: n }) }); closePassModal(); toast('Changed!','success'); } catch(e) { toast(e.message,'error'); } }
         
-        async function changePassword() {
-            const curr = document.getElementById('currPass').value;
-            const newP = document.getElementById('newPass').value;
-            const conf = document.getElementById('confPass').value;
-            
-            if (!curr || !newP || !conf) { toast('All fields required', 'error'); return; }
-            if (newP.length < 6) { toast('New password min 6 chars', 'error'); return; }
-            if (newP !== conf) { toast('Passwords do not match', 'error'); return; }
-            
-            try {
-                await api('/api/auth/password', { method:'PUT', body: JSON.stringify({ currentPassword: curr, newPassword: newP }) });
-                closePassModal();
-                toast('Password changed!', 'success');
-            } catch(e) { toast(e.message, 'error'); }
-        }
+        function showGenderModal() { document.getElementById('genderModal').classList.remove('hidden'); }
+        function closeGenderModal() { document.getElementById('genderModal').classList.add('hidden'); }
+        async function changeGender() { var g = document.getElementById('userGender').value; try { await api('/api/auth/gender', { method:'PUT', body: JSON.stringify({ gender: g }) }); user.gender = g; closeGenderModal(); toast('Updated!','success'); } catch(e) { toast(e.message,'error'); } }
         
+        async function clearHistory() { if (!chatId) return; if (!confirm('Clear chat history?')) return; await api('/api/chats/'+chatId+'/history', { method:'DELETE' }); document.getElementById('msgs').innerHTML = ''; relLevel = 0; updRelUI(); toast('Cleared','success'); }
         async function logout() { localStorage.removeItem('lc'); await api('/api/auth/logout', { method:'POST' }); location.href = '/'; }
     </script>
 </body>

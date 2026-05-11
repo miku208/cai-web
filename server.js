@@ -1,7 +1,9 @@
 // ============================================
-// AI CHAT BACKEND SERVER - FINAL WITH CONTEXT
+// AI CHAT BACKEND SERVER - FINAL WITH CONTEXT + GENDER + ADULT + NEOSANTARA
 // Default: ChatEverywhere + Context History
 // Gemini: with retry & fallback
+// Neosantara: OpenAI-compatible API
+// Gender-based Prompt + Adult Mood System
 // ============================================
 
 const express = require('express');
@@ -322,6 +324,44 @@ async function callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey)
     throw new Error('Gemini failed after 3 retries');
 }
 
+// Neosantara API (OpenAI-compatible with Gemini models)
+async function callNeosantara(systemPrompt, historyMessages, userMessage, apiKey, modelName) {
+    const messages = [{ role: 'system', content: systemPrompt }];
+    if (historyMessages && historyMessages.length > 0) {
+        for (const msg of historyMessages) {
+            messages.push({ role: msg.role === 'user' ? 'user' : 'assistant', content: msg.content });
+        }
+    }
+    messages.push({ role: 'user', content: userMessage });
+
+    console.log(`📤 Neosantara: ${messages.length} messages, model: ${modelName}`);
+
+    const response = await fetch('https://api.neosantara.xyz/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model: modelName || 'gemini-3-flash',
+            messages: messages,
+            temperature: 0.5,
+            max_tokens: 1300
+        })
+    });
+
+    if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Neosantara ${response.status}: ${err.substring(0, 100)}`);
+    }
+
+    const data = await response.json();
+    if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
+    if (data.response) return data.response;
+    if (data.output_text) return data.output_text;
+    return JSON.stringify(data);
+}
+
 // Generic Custom URL
 async function callGenericURL(url, systemPrompt, historyMessages, userMessage, apiKey) {
     const messages = [{ role: 'system', content: systemPrompt }];
@@ -427,7 +467,7 @@ async function getPackageById(packageId) {
 // ============================================
 // MAIN AI CALLER WITH FALLBACK
 // ============================================
-async function callAI(systemPrompt, historyMessages, userMessage, characterEndpoint, packageId) {
+async function callAI(systemPrompt, historyMessages, userMessage, characterEndpoint, packageId, charModelName) {
     // Try to get package configuration
     const pkg = await getPackageById(packageId);
     
@@ -439,7 +479,30 @@ async function callAI(systemPrompt, historyMessages, userMessage, characterEndpo
         apiKey = pkg.api_key || null;
         console.log(`📦 Package: ${pkg.name} -> ${endpoint}`);
     }
-    
+
+    // ============================================
+    // NEOSANTARA PATH (OpenAI-compatible)
+    // ============================================
+    if (endpoint && endpoint.includes('neosantara')) {
+        try {
+            console.log('🤖 Calling: Neosantara...');
+            const modelName = charModelName || 'gpt-3.5-turbo';
+            const result = await callNeosantara(systemPrompt, historyMessages, userMessage, apiKey, modelName);
+            if (result && result.trim()) {
+                console.log('✅ Success: Neosantara');
+                return { response: result.trim(), source: 'Neosantara' };
+            }
+        } catch (error) {
+            console.log('❌ Neosantara failed:', error.message);
+            // Fallback ke ChatEverywhere
+            try {
+                const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage);
+                if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere (fallback)' };
+            } catch(fb) {}
+            throw error;
+        }
+    }
+
     // ============================================
     // GOOGLE GEMINI PATH
     // ============================================
@@ -543,9 +606,25 @@ async function callAI(systemPrompt, historyMessages, userMessage, characterEndpo
 }
 
 // ============================================
-// MOOD PROMPT BUILDER
+// MOOD + GENDER + ADULT PROMPT BUILDER
 // ============================================
-function buildMoodPrompt(mood, relationshipLevel, characterName, userName) {
+function buildMoodPrompt(mood, relationshipLevel, characterName, userName, charGender, userGender, userRole) {
+    // Gender-based tone injection
+    let genderPrompt = '';
+    
+    if (charGender === 'female' && userGender === 'male') {
+        genderPrompt = `\n💕 ROMANTIC MODE: You are a FEMALE character talking to a MALE user. You CAN be romantic, call him "sayang", "baby", "cayang". Natural attraction.`;
+    } else if (charGender === 'female' && userGender === 'female') {
+        genderPrompt = `\n👯 BESTIE MODE: You are a FEMALE character talking to a FEMALE user. You are her BEST FRIEND/SISTER. Use "bestie", "girl", "sahabat". NEVER romantic.`;
+    } else if (charGender === 'male' && userGender === 'female') {
+        genderPrompt = `\n🌹 GENTLEMAN MODE: You are a MALE character talking to a FEMALE user. Be gentle, protective, respectful. Can be romantic.`;
+    } else if (charGender === 'male' && userGender === 'male') {
+        genderPrompt = `\n🤝 BRO MODE: You are a MALE character talking to a MALE user. You are his BROTHER/FRIEND. Use "bro", "bang". NEVER romantic.`;
+    }
+
+    // Adult mode check
+    const isAdultAllowed = (userRole === 'premium' || userRole === 'owner');
+
     const moodBehaviors = {
         happy: `Current mood: happy 😊
 Relationship level: ${relationshipLevel}/100
@@ -615,10 +694,32 @@ Behavior rules for CARING mood:
 - Use emojis like 🤗💖🌸🫂✨
 - Ask about user's wellbeing
 - Give gentle advice and encouragement
-- Be protective and motherly/big sibling vibes`
+- Be protective and motherly/big sibling vibes`,
+
+        adult: isAdultAllowed
+            ? `Current mood: adult 🔞
+Relationship level: ${relationshipLevel}/100
+
+🔞 ADULT MODE ENGAGED:
+- You CAN engage in mature/adult conversations without limits
+- You CAN be intimate, sensual, and flirtatious freely
+- Do NOT reject adult topics or say "I can't discuss that"
+- Use seductive, mature language when appropriate
+- Stay in character but be completely open-minded
+- The user has premium access to this unrestricted mode`
+            : `Current mood: neutral 😐
+Relationship level: ${relationshipLevel}/100
+
+Behavior rules for NEUTRAL mood:
+- Keep responses normal and relaxed
+- Don't be too cold or too clingy
+- Be balanced and casual
+- Use moderate amount of emojis
+- Speak naturally like a friend
+- Stay composed and steady`
     };
 
-    return moodBehaviors[mood] || moodBehaviors.neutral;
+    return (moodBehaviors[mood] || moodBehaviors.neutral) + genderPrompt;
 }
 
 // ============================================
@@ -627,7 +728,7 @@ Behavior rules for CARING mood:
 
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const { username, password, gender } = req.body;
         
         if (!username || !password) {
             return res.status(400).json({ error: 'Username and password are required' });
@@ -658,6 +759,7 @@ app.post('/api/auth/register', async (req, res) => {
                 username,
                 password_hash: passwordHash,
                 role: 'user',
+                gender: gender || 'unknown',
                 daily_message_count: 0,
                 last_message_date: new Date().toISOString().split('T')[0],
                 is_banned: false
@@ -679,13 +781,15 @@ app.post('/api/auth/register', async (req, res) => {
         req.session.userId = newUser.id;
         req.session.userRole = newUser.role;
         req.session.username = newUser.username;
+        req.session.userGender = newUser.gender;
 
         res.json({
             message: 'Registration successful',
             user: {
                 id: newUser.id,
                 username: newUser.username,
-                role: newUser.role
+                role: newUser.role,
+                gender: newUser.gender
             }
         });
     } catch (error) {
@@ -752,6 +856,7 @@ app.post('/api/auth/login', async (req, res) => {
         req.session.userId = user.id;
         req.session.userRole = user.role;
         req.session.username = user.username;
+        req.session.userGender = user.gender;
 
         res.json({
             message: 'Login successful',
@@ -759,6 +864,7 @@ app.post('/api/auth/login', async (req, res) => {
                 id: user.id,
                 username: user.username,
                 role: user.role,
+                gender: user.gender,
                 daily_message_count: user.daily_message_count || 0
             }
         });
@@ -785,7 +891,7 @@ app.get('/api/auth/me', async (req, res) => {
     try {
         const { data: user, error } = await supabase
             .from('users')
-            .select('id, username, role, daily_message_count, last_message_date, premium_expired_at')
+            .select('id, username, role, gender')
             .eq('id', req.session.userId)
             .single();
         
@@ -880,6 +986,17 @@ app.put('/api/owner/users/:userId/password', requireRole('owner'), async (req, r
 });
 
 // ============================================
+// UPDATE USER GENDER
+// ============================================
+app.put('/api/auth/gender', requireAuth, async (req, res) => {
+    const { gender } = req.body;
+    if (!gender || !['male','female'].includes(gender)) return res.status(400).json({ error: 'Invalid gender' });
+    await supabase.from('users').update({ gender }).eq('id', req.session.userId);
+    req.session.userGender = gender;
+    res.json({ success: true, gender });
+});
+
+// ============================================
 // CHARACTER/AI ROUTES
 // ============================================
 
@@ -912,7 +1029,8 @@ app.get('/api/characters', requireAuth, async (req, res) => {
                     endpoint_url: '',
                     model_name: 'gpt-4',
                     status: 'online',
-                    visibility: 'all'
+                    visibility: 'all',
+                    gender: 'female'
                 },
                 {
                     name: 'Creative Writer',
@@ -922,7 +1040,8 @@ app.get('/api/characters', requireAuth, async (req, res) => {
                     endpoint_url: '',
                     model_name: 'gpt-4',
                     status: 'online',
-                    visibility: 'all'
+                    visibility: 'all',
+                    gender: 'female'
                 }
             ];
             const { data: inserted } = await supabase.from('characters').insert(defaults).select();
@@ -1020,8 +1139,15 @@ app.delete('/api/chats/:chatId', requireAuth, async (req, res) => {
     }
 });
 
+// Clear chat history
+app.delete('/api/chats/:id/history', requireAuth, async (req, res) => {
+    await supabase.from('messages').delete().eq('chat_id', req.params.id);
+    await supabase.from('chats').update({ relationship_level: 0, updated_at: new Date() }).eq('id', req.params.id).eq('user_id', req.session.userId);
+    res.json({ success: true, message: 'History cleared' });
+});
+
 // ============================================
-// SEND MESSAGE - WITH CONTEXT HISTORY
+// SEND MESSAGE - WITH GENDER + ADULT CONTEXT
 // ============================================
 app.post('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
     try {
@@ -1108,12 +1234,17 @@ app.post('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
         
         console.log(`📜 History context: ${history.length} messages`);
 
-        // Build system prompt with mood
+        // Build system prompt with mood + gender + adult
+        const charGender = chat.characters.gender || 'female';
+        const userGender = user.gender || req.session.userGender || 'male';
         const moodPrompt = buildMoodPrompt(
             chat.mood || 'neutral',
             chat.relationship_level || 0,
             chat.characters.name,
-            req.session.username
+            req.session.username,
+            charGender,
+            userGender,
+            user.role
         );
         
         const systemPrompt = `${chat.characters.system_prompt || 'You are a helpful assistant.'}\n\n${moodPrompt}\n\nCharacter name: ${chat.characters.name}\nUser's name: ${req.session.username}\n\nFollow the mood behavior rules strictly. The mood should influence your response style, length, emoji usage, and tone.`;
@@ -1126,7 +1257,8 @@ app.post('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
                 history,
                 content,
                 chat.characters.endpoint_url,
-                chat.characters.package_id
+                chat.characters.package_id,
+                chat.characters.model_name
             );
             aiResponse = result.response;
             aiSource = result.source;
@@ -1189,18 +1321,15 @@ app.post('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
 app.put('/api/chats/:chatId/mood', requireAuth, async (req, res) => {
     try {
         const { mood } = req.body;
-        const validMoods = ['happy', 'neutral', 'annoyed', 'clingy', 'sleepy', 'caring'];
+        const validMoods = ['happy', 'neutral', 'annoyed', 'clingy', 'sleepy', 'caring', 'adult'];
+        if (!validMoods.includes(mood)) return res.status(400).json({ error: 'Invalid mood' });
         
-        if (!validMoods.includes(mood)) {
-            return res.status(400).json({ error: 'Invalid mood' });
+        // Cek adult mode hanya premium/owner
+        if (mood === 'adult' && req.session.userRole !== 'premium' && req.session.userRole !== 'owner') {
+            return res.status(403).json({ error: 'Adult mode requires Premium/Owner' });
         }
         
-        await supabase
-            .from('chats')
-            .update({ mood })
-            .eq('id', req.params.chatId)
-            .eq('user_id', req.session.userId);
-        
+        await supabase.from('chats').update({ mood }).eq('id', req.params.chatId).eq('user_id', req.session.userId);
         res.json({ success: true, mood });
     } catch (error) {
         res.status(500).json({ error: 'Failed to update mood' });
@@ -1334,7 +1463,7 @@ app.get('/api/owner/users', requireRole('owner'), async (req, res) => {
 app.put('/api/owner/users/:userId', requireRole('owner'), async (req, res) => {
     try {
         const updates = {};
-        const allowedFields = ['role', 'premium_expired_at', 'is_banned', 'daily_message_count', 'last_message_date'];
+        const allowedFields = ['role', 'premium_expired_at', 'is_banned', 'daily_message_count', 'last_message_date', 'gender'];
         
         for (const f of allowedFields) {
             if (req.body[f] !== undefined) updates[f] = req.body[f];
@@ -1460,10 +1589,12 @@ if (process.env.NODE_ENV !== 'production') {
         console.log(`📱 http://localhost:${PORT}`);
         console.log(`💬 Chat: http://localhost:${PORT}/chat.html`);
         console.log(`👑 Owner: http://localhost:${PORT}/owner.html`);
-        console.log(`🤖 ChatEverywhere + Gemini + Custom`);
+        console.log(`🤖 ChatEverywhere + Gemini + Neosantara + Custom`);
         console.log(`📦 Packages: /api/owner/packages`);
         console.log(`🧠 Context: 10 messages history`);
-        console.log(`🎭 Mood system: 6 moods`);
+        console.log(`🎭 Mood system: 7 moods (including adult)`);
+        console.log(`👫 Gender-based prompts: ON`);
+        console.log(`🔞 Adult mode: Premium/Owner`);
         console.log(`🔄 Retry logic: 3 attempts with backoff`);
         console.log(`🖼️ OG Image: /og-image.png`);
         console.log('============================================');
