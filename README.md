@@ -58,8 +58,8 @@ project/
 ### 1. Clone or download this project
 
 ```bash
-git clone https://github.com/yourusername/cai-chat.git
-cd cai-chat
+git clone https://github.com/miku208/cai.git
+cd cai
 ```
 
 2. Install dependencies
