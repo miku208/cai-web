@@ -94,14 +94,6 @@
         .hidden { display:none !important; }
         .text-c { text-align:center; color:var(--muted); }
         
-        /* Access Denied */
-        .access-denied {
-            display:flex;align-items:center;justify-content:center;
-            height:100vh;color:#ef4444;font-family:sans-serif;font-size:18px;
-            flex-direction:column;gap:12px;text-align:center;padding:20px;
-        }
-        .access-denied .icon { font-size:48px; }
-        
         @media (max-width:768px) {
             .dash { flex-direction:column; }
             .dash-sb { width:100%; min-width:auto; height:auto; padding:10px; position:relative; }
@@ -115,7 +107,7 @@
     </style>
 </head>
 <body>
-    <div class="dash" id="dashContent">
+    <div class="dash">
         <aside class="dash-sb">
             <div class="dash-logo">👑 Admin</div>
             <nav class="dash-nav">
@@ -185,7 +177,6 @@
                 <div class="dash-title">Settings</div>
                 <div class="dash-sub">Manage website settings</div>
                 
-                <!-- QRIS Settings -->
                 <div class="table-wrap">
                     <div class="table-head"><span>QRIS Image</span></div>
                     <div style="padding:20px;">
@@ -199,7 +190,6 @@
                     </div>
                 </div>
                 
-                <!-- Email OTP Settings -->
                 <div class="table-wrap" style="margin-top:20px;">
                     <div class="table-head"><span>📧 Email OTP Settings (Resend)</span></div>
                     <div style="padding:20px;">
@@ -214,7 +204,6 @@
                     </div>
                 </div>
                 
-                <!-- WhatsApp Owner Settings -->
                 <div class="table-wrap" style="margin-top:20px;">
                     <div class="table-head"><span>📱 WhatsApp Owner</span></div>
                     <div style="padding:20px;">
@@ -303,7 +292,6 @@
     <script>
         // ==================== SECURITY: AUTH CHECK ====================
         (function() {
-            // Prevent back button cache
             history.pushState(null, '', location.href);
             window.addEventListener('popstate', function() {
                 history.pushState(null, '', location.href);
@@ -311,20 +299,20 @@
             });
         })();
         
-        function forceLogout(msg) {
-            sessionStorage.clear();
-            localStorage.clear();
-            document.getElementById('dashContent').innerHTML = '<div class="access-denied"><span class="icon">⛔</span>'+msg+'<br>Redirecting to login...</div>';
-            setTimeout(function() { location.replace('/'); }, 1500);
-        }
-        
-        // Cek session setiap user balik ke tab
         document.addEventListener('visibilitychange', async function() {
             if (document.visibilityState === 'visible') {
                 try {
                     var d = await api('/api/auth/me');
-                    if (!d.user || d.user.role !== 'owner') { forceLogout('Session expired or access revoked'); }
-                } catch(e) { forceLogout('Session expired'); }
+                    if (!d.user || d.user.role !== 'owner') {
+                        sessionStorage.clear();
+                        localStorage.clear();
+                        location.replace('/');
+                    }
+                } catch(e) {
+                    sessionStorage.clear();
+                    localStorage.clear();
+                    location.replace('/');
+                }
             }
         });
         
@@ -332,11 +320,15 @@
             try {
                 var d = await api('/api/auth/me');
                 if (!d.user || d.user.role !== 'owner') {
-                    forceLogout('⛔ Access Denied - Owner only');
+                    sessionStorage.clear();
+                    localStorage.clear();
+                    location.replace('/');
                     return;
                 }
             } catch(e) {
-                forceLogout('⛔ Access Denied - Please login first');
+                sessionStorage.clear();
+                localStorage.clear();
+                location.replace('/');
                 return;
             }
             
@@ -351,7 +343,10 @@
             var d = await r.json();
             if (!r.ok) {
                 if (d.error && (d.error.indexOf('Unauthorized') !== -1 || d.error.indexOf('banned') !== -1)) {
-                    forceLogout(d.error);
+                    sessionStorage.clear();
+                    localStorage.clear();
+                    location.replace('/');
+                    throw new Error(d.error);
                 }
                 throw new Error(d.error || 'Error');
             }
