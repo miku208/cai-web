@@ -177,6 +177,7 @@
                 <div class="dash-title">Settings</div>
                 <div class="dash-sub">Manage website settings</div>
                 
+                <!-- QRIS Settings -->
                 <div class="table-wrap">
                     <div class="table-head"><span>QRIS Image</span></div>
                     <div style="padding:20px;">
@@ -190,6 +191,7 @@
                     </div>
                 </div>
                 
+                <!-- Email OTP Settings -->
                 <div class="table-wrap" style="margin-top:20px;">
                     <div class="table-head"><span>📧 Email OTP Settings (Resend)</span></div>
                     <div style="padding:20px;">
@@ -204,6 +206,7 @@
                     </div>
                 </div>
                 
+                <!-- WhatsApp Owner Settings -->
                 <div class="table-wrap" style="margin-top:20px;">
                     <div class="table-head"><span>📱 WhatsApp Owner</span></div>
                     <div style="padding:20px;">
@@ -291,46 +294,36 @@
 
     <script>
         // ==================== SECURITY: AUTH CHECK ====================
-        (function() {
+        (async function() {
+            try {
+                var d = await (await fetch('/api/auth/me', { headers: { 'Content-Type': 'application/json' } })).json();
+                if (!d.user || d.user.role !== 'owner') {
+                    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#ef4444;font-family:sans-serif;font-size:18px;">⛔ Access Denied</div>';
+                    setTimeout(function() { location.replace('/'); }, 1500);
+                    return;
+                }
+            } catch(e) {
+                document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#ef4444;font-family:sans-serif;font-size:18px;">⛔ Access Denied</div>';
+                setTimeout(function() { location.replace('/'); }, 1500);
+                return;
+            }
+            
+            // Prevent back button cache
             history.pushState(null, '', location.href);
             window.addEventListener('popstate', function() {
                 history.pushState(null, '', location.href);
                 location.replace('/');
             });
-        })();
-        
-        document.addEventListener('visibilitychange', async function() {
-            if (document.visibilityState === 'visible') {
-                try {
-                    var d = await api('/api/auth/me');
-                    if (!d.user || d.user.role !== 'owner') {
-                        sessionStorage.clear();
-                        localStorage.clear();
-                        location.replace('/');
-                    }
-                } catch(e) {
-                    sessionStorage.clear();
-                    localStorage.clear();
-                    location.replace('/');
-                }
-            }
-        });
-        
-        (async function() {
-            try {
-                var d = await api('/api/auth/me');
-                if (!d.user || d.user.role !== 'owner') {
-                    sessionStorage.clear();
-                    localStorage.clear();
-                    location.replace('/');
-                    return;
-                }
-            } catch(e) {
-                sessionStorage.clear();
-                localStorage.clear();
-                location.replace('/');
-                return;
-            }
+            
+            // Set no-cache headers for all fetch requests
+            var originalFetch = window.fetch;
+            window.fetch = function(url, options) {
+                options = options || {};
+                options.headers = options.headers || {};
+                options.headers['Cache-Control'] = 'no-cache';
+                options.headers['Pragma'] = 'no-cache';
+                return originalFetch(url, options);
+            };
             
             loadStats(); loadUsers(); loadChars(); loadPkgs(); loadLogs(); loadSettings();
             document.getElementById('charForm').addEventListener('submit', saveChar);
@@ -341,15 +334,7 @@
         async function api(url, opt = {}) {
             var r = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }, ...opt });
             var d = await r.json();
-            if (!r.ok) {
-                if (d.error && (d.error.indexOf('Unauthorized') !== -1 || d.error.indexOf('banned') !== -1)) {
-                    sessionStorage.clear();
-                    localStorage.clear();
-                    location.replace('/');
-                    throw new Error(d.error);
-                }
-                throw new Error(d.error || 'Error');
-            }
+            if (!r.ok) throw new Error(d.error || 'Error');
             return d;
         }
         
@@ -553,9 +538,9 @@
         function toast(m, t) { t = t || 'ok'; var e = document.createElement('div'); e.className = 'toast ' + t; e.textContent = m; document.body.appendChild(e); setTimeout(function() { e.remove(); }, 2500); }
         
         async function logout() {
+            await api('/api/auth/logout',{method:'POST'});
             sessionStorage.clear();
             localStorage.clear();
-            try { await api('/api/auth/logout',{method:'POST'}); } catch(e) {}
             location.replace('/');
         }
     </script>
