@@ -149,8 +149,8 @@ const requireRole = (...roles) => {
 // ============================================
 function getLimit(role) {
     if (role === 'owner') return Infinity;
-    if (role === 'premium') return 150;
-    return 15; // Default user
+    if (role === 'premium') return 180;
+    return 30; // Default user
 }
 
 // ============================================
@@ -1042,6 +1042,69 @@ app.get('/api/characters', requireAuth, async (req, res) => {
         }
         res.json({ characters });
     } catch (error) { res.status(500).json({ error: 'Failed to get characters' }); }
+});
+
+// Music search endpoint - proxy ke NexRay Spotify API
+// Music search via NexRay Spotify
+app.get('/api/music/search', async (req, res) => {
+    const q = (req.query.q || '').trim();
+    if (!q) return res.json({ tracks: [] });
+    
+    try {
+        const response = await fetch('https://api.nexray.eu.cc/search/spotify?q=' + encodeURIComponent(q));
+        const data = await response.json();
+        
+        const tracks = (data.result || []).map(track => ({
+            title: track.title || 'Unknown',
+            artist: track.artist || 'Unknown',
+            url: track.url || '',
+            cover: track.thumbnail || '',
+            duration: track.duration || '',
+            album: track.album || '',
+            spotifyUrl: track.url || ''
+        }));
+        
+        res.json({ tracks });
+    } catch(e) {
+        res.json({ tracks: [] });
+    }
+});
+
+// Get audio stream URL dari Spotify
+app.get('/api/music/stream', async (req, res) => {
+    const spotifyUrl = req.query.url;
+    if (!spotifyUrl) return res.status(400).json({ error: 'URL required' });
+    
+    try {
+        const response = await fetch('https://api.nexray.eu.cc/downloader/spotify?url=' + encodeURIComponent(spotifyUrl));
+        const data = await response.json();
+        
+        // NexRay return URL download yang bisa langsung di-play
+        if (data.result?.url) {
+            res.json({ url: data.result.url });
+        } else if (data.url) {
+            res.json({ url: data.url });
+        } else {
+            res.json({ error: 'No stream URL found' });
+        }
+    } catch(e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Default music playlist
+app.get('/api/music', async (req, res) => {
+    const playlist = [
+        {
+            id: 1,
+            title: "Lofi Chill Beats",
+            artist: "MikuHost Radio",
+            url: "https://cdn.mikucai.my.id/music/lofi1.mp3",
+            cover: "https://cdn.aceimg.com/27a9dbe8f.jpg"
+        }
+    ];
+    
+    res.json({ playlist, defaultVolume: 0.5 });
 });
 
 // ============================================
