@@ -56,6 +56,7 @@
         .badge.female { background:rgba(236,72,153,0.2);color:#f472b6; }
         .badge.verified { background:rgba(34,197,94,0.2);color:#4ade80; }
         .badge.unverified { background:rgba(245,158,11,0.2);color:#fbbf24; }
+        .badge.free { background:rgba(34,197,94,0.2);color:#4ade80; }
         
         .btn { padding:10px 20px; border-radius:10px; border:none; cursor:pointer; font-family:inherit; font-weight:600; font-size:13px; }
         .btn-p { background:var(--acc);color:white; }
@@ -74,6 +75,9 @@
         .form-g textarea { resize:vertical; min-height:70px; }
         .form-g select option { background:var(--card); color:var(--text); }
         .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+        .form-check { display:flex;align-items:center;gap:8px;margin-bottom:14px; }
+        .form-check input { width:16px;height:16px;accent-color:var(--acc); }
+        .form-check label { color:var(--text);font-size:13px; }
         
         .modal { position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:100; }
         .modal.hidden { display:none; }
@@ -143,7 +147,7 @@
                 <div class="dash-sub">Manage all registered users</div>
                 <div class="table-wrap">
                     <div class="table-head"><span>All Users</span><button class="btn-sm p" onclick="loadUsers()">🔄 Refresh</button></div>
-                    <div class="table-scroll"><table><thead><tr><th>Username</th><th>Role</th><th>Gender</th><th>Verified</th><th>Msgs</th><th>Premium</th><th>Actions</th></tr></thead><tbody id="usersBody"><tr><td colspan="7" class="text-c">Loading...</td></tr></tbody></table></div>
+                    <div class="table-scroll"><table><thead><tr><th>Username</th><th>Role</th><th>Gender</th><th>Verified</th><th>AI Limit</th><th>Msgs</th><th>Premium</th><th>Actions</th></tr></thead><tbody id="usersBody"><tr><td colspan="8" class="text-c">Loading...</td></tr></tbody></table></div>
                 </div>
             </div>
             
@@ -151,11 +155,11 @@
             <div id="page-characters" class="hidden">
                 <div class="banner-wrap"><img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai By MikuHost" loading="lazy"></div>
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                    <div><div class="dash-title">AI Character Manager</div><div class="dash-sub">Create, edit, and manage AI characters</div></div>
+                    <div><div class="dash-title">AI Character Manager</div><div class="dash-sub">Manage ALL characters (System + User-created)</div></div>
                     <button class="btn btn-p" onclick="showAddForm()">+ Add AI</button>
                 </div>
                 <div class="table-wrap">
-                    <div class="table-scroll"><table><thead><tr><th>Avatar</th><th>Name</th><th>Gender</th><th>Package</th><th>Status</th><th>Visibility</th><th>Actions</th></tr></thead><tbody id="charsBody"><tr><td colspan="7" class="text-c">Loading...</td></tr></tbody></table></div>
+                    <div class="table-scroll"><table><thead><tr><th>Avatar</th><th>Name</th><th>Gender</th><th>Package</th><th>Created By</th><th>Status</th><th>Visibility</th><th>Actions</th></tr></thead><tbody id="charsBody"><tr><td colspan="8" class="text-c">Loading...</td></tr></tbody></table></div>
                 </div>
             </div>
             
@@ -163,11 +167,11 @@
             <div id="page-packages" class="hidden">
                 <div class="banner-wrap"><img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai By MikuHost" loading="lazy"></div>
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                    <div><div class="dash-title">AI Packages</div><div class="dash-sub">Manage API endpoints & keys</div></div>
+                    <div><div class="dash-title">AI Packages</div><div class="dash-sub">Manage API endpoints, keys & premium status</div></div>
                     <button class="btn btn-p" onclick="showPkgForm()">+ Add Package</button>
                 </div>
                 <div class="table-wrap">
-                    <div class="table-scroll"><table><thead><tr><th>Name</th><th>URL</th><th>API Key</th><th>Actions</th></tr></thead><tbody id="pkgsBody"><tr><td colspan="4" class="text-c">Loading...</td></tr></tbody></table></div>
+                    <div class="table-scroll"><table><thead><tr><th>Name</th><th>URL</th><th>Model</th><th>Type</th><th>API Key</th><th>Actions</th></tr></thead><tbody id="pkgsBody"><tr><td colspan="6" class="text-c">Loading...</td></tr></tbody></table></div>
                 </div>
             </div>
             
@@ -203,6 +207,18 @@
                             <label>Sender Email (must be verified in Resend)</label>
                             <input type="email" id="senderEmail" placeholder="noreply@yourdomain.com">
                         </div>
+                    </div>
+                </div>
+                
+                <!-- WhatsApp Owner Settings -->
+                <div class="table-wrap" style="margin-top:20px;">
+                    <div class="table-head"><span>📱 WhatsApp Owner</span></div>
+                    <div style="padding:20px;">
+                        <div class="form-g">
+                            <label>Nomor WhatsApp (628xxx, tanpa +, tanpa spasi)</label>
+                            <input type="text" id="ownerWhatsapp" placeholder="6281234567890">
+                        </div>
+                        <p style="font-size:11px;color:var(--muted);margin-top:4px;">Nomor ini untuk tombol "Beli Premium" di halaman login</p>
                     </div>
                 </div>
                 
@@ -256,6 +272,8 @@
                 <div class="form-g"><label>Name *</label><input type="text" id="pkgName" required placeholder="e.g. Google Gemini"></div>
                 <div class="form-g"><label>URL *</label><input type="text" id="pkgUrl" required placeholder="gemini or https://..."></div>
                 <div class="form-g"><label>API Key (optional)</label><input type="text" id="pkgApiKey" placeholder="AIza... or sk-..."></div>
+                <div class="form-g"><label>Model Name</label><input type="text" id="pkgModel" placeholder="gemini-2.5-flash" value="gpt-4"></div>
+                <div class="form-check"><input type="checkbox" id="pkgIsPremium"><label>⭐ Premium Package (hanya premium yang bisa pakai)</label></div>
                 <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
                     <button type="button" class="btn btn-s" onclick="closePkgModal()">Cancel</button>
                     <button type="submit" class="btn btn-p">Save</button>
@@ -281,22 +299,73 @@
     </div>
 
     <script>
+        // ==================== SECURITY ====================
+        (function() {
+            history.pushState(null, '', location.href);
+            window.addEventListener('popstate', function() {
+                history.pushState(null, '', location.href);
+                location.replace('/');
+            });
+        })();
+        
+        document.addEventListener('visibilitychange', async function() {
+            if (document.visibilityState === 'visible') {
+                try {
+                    var d = await api('/api/auth/me');
+                    if (!d.user || d.user.role !== 'owner') {
+                        sessionStorage.clear();
+                        localStorage.clear();
+                        location.replace('/');
+                    }
+                } catch(e) {
+                    sessionStorage.clear();
+                    localStorage.clear();
+                    location.replace('/');
+                }
+            }
+        });
+        
+        // ==================== API ====================
         async function api(url, opt = {}) {
-            var r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opt });
+            var r = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }, ...opt });
             var d = await r.json();
-            if (!r.ok) throw new Error(d.error || 'Error');
+            if (!r.ok) {
+                if (d.error && (d.error.indexOf('Unauthorized') !== -1 || d.error.indexOf('banned') !== -1 || d.error.indexOf('Not authenticated') !== -1)) {
+                    sessionStorage.clear();
+                    localStorage.clear();
+                    location.replace('/');
+                    throw new Error(d.error);
+                }
+                throw new Error(d.error || 'Error');
+            }
             return d;
         }
         
         var allChars = [], allPkgs = [], premId = null;
         
+        // ==================== INIT ====================
         (async function() {
-            try { var d = await api('/api/auth/me'); if (!d.user || d.user.role !== 'owner') { location.href = '/'; return; } } catch(e) { location.href = '/'; }
+            try {
+                var d = await api('/api/auth/me');
+                if (!d.user || d.user.role !== 'owner') {
+                    sessionStorage.clear();
+                    localStorage.clear();
+                    location.replace('/');
+                    return;
+                }
+            } catch(e) {
+                sessionStorage.clear();
+                localStorage.clear();
+                location.replace('/');
+                return;
+            }
+            
             loadStats(); loadUsers(); loadChars(); loadPkgs(); loadLogs(); loadSettings();
             document.getElementById('charForm').addEventListener('submit', saveChar);
             document.getElementById('pkgForm').addEventListener('submit', savePkg);
         })();
         
+        // ==================== NAVIGATION ====================
         function switchPage(p) {
             document.querySelectorAll('.dash-nav button').forEach(function(b) { b.classList.remove('active'); });
             var btn = document.querySelector('[data-p="' + p + '"]');
@@ -312,6 +381,7 @@
             if (p === 'dashboard') loadStats();
         }
         
+        // ==================== LOADERS ====================
         async function loadStats() {
             try { var d = await api('/api/owner/stats'); document.getElementById('sUsers').textContent = d.users||0; document.getElementById('sChats').textContent = d.chats||0; document.getElementById('sMessages').textContent = d.messages||0; document.getElementById('sCharacters').textContent = d.characters||0; } catch(e) {}
         }
@@ -320,7 +390,7 @@
             try {
                 var d = await api('/api/owner/users');
                 document.getElementById('usersBody').innerHTML = (d.users||[]).map(function(u) {
-                    return '<tr><td><strong>' + u.username + '</strong></td><td><span class="badge ' + u.role + '">' + u.role + '</span>' + (u.is_banned?' <span class="badge banned">banned</span>':'') + '</td><td><span class="badge '+(u.gender==='male'?'male':'female')+'">'+(u.gender==='male'?'♂':'♀')+'</span></td><td><span class="badge '+(u.verified?'verified':'unverified')+'">'+(u.verified?'✅':'⚠️')+'</span></td><td>' + (u.daily_message_count||0) + '</td><td>' + (u.premium_expired_at?new Date(u.premium_expired_at).toLocaleDateString():'-') + '</td><td>' + (!u.is_banned?'<button class="btn-sm d" onclick="banUser(\''+u.id+'\')">Ban</button>':'<button class="btn-sm s" onclick="unbanUser(\''+u.id+'\')">Unban</button>') + (u.role!=='premium'?'<button class="btn-sm w" onclick="showPrem(\''+u.id+'\',\''+u.username+'\')">⭐ Premium</button>':'<button class="btn-sm p" onclick="setRole(\''+u.id+'\',\'user\')">👤 User</button>') + (!u.verified?'<button class="btn-sm v" onclick="verifyUser(\''+u.id+'\')">✅ Verify</button>':'') + '<button class="btn-sm r" onclick="resetDaily(\''+u.id+'\')">🔄 Reset</button>' + (u.role!=='owner'?'<button class="btn-sm d" onclick="delUser(\''+u.id+'\')">🗑️</button>':'') + '</td></tr>';
+                    return '<tr><td><strong>' + u.username + '</strong></td><td><span class="badge ' + u.role + '">' + u.role + '</span>' + (u.is_banned?' <span class="badge banned">banned</span>':'') + '</td><td><span class="badge '+(u.gender==='male'?'male':'female')+'">'+(u.gender==='male'?'♂':'♀')+'</span></td><td><span class="badge '+(u.verified?'verified':'unverified')+'">'+(u.verified?'✅':'⚠️')+'</span></td><td>' + (u.max_ai_characters||5) + '</td><td>' + (u.daily_message_count||0) + '</td><td>' + (u.premium_expired_at?new Date(u.premium_expired_at).toLocaleDateString():'-') + '</td><td>' + (!u.is_banned?'<button class="btn-sm d" onclick="banUser(\''+u.id+'\')">Ban</button>':'<button class="btn-sm s" onclick="unbanUser(\''+u.id+'\')">Unban</button>') + (u.role!=='premium'?'<button class="btn-sm w" onclick="showPrem(\''+u.id+'\',\''+u.username+'\')">⭐ Premium</button>':'<button class="btn-sm p" onclick="setRole(\''+u.id+'\',\'user\')">👤 User</button>') + (!u.verified?'<button class="btn-sm v" onclick="verifyUser(\''+u.id+'\')">✅ Verify</button>':'') + '<button class="btn-sm r" onclick="resetDaily(\''+u.id+'\')">🔄 Reset</button>' + (u.role!=='owner'?'<button class="btn-sm d" onclick="delUser(\''+u.id+'\')">🗑️</button>':'') + '</td></tr>';
                 }).join('');
             } catch(e) {}
         }
@@ -330,7 +400,8 @@
                 var d = await api('/api/owner/characters');
                 allChars = d.characters || [];
                 document.getElementById('charsBody').innerHTML = allChars.map(function(c) {
-                    return '<tr><td style="font-size:22px;">' + (c.avatar_url&&c.avatar_url.startsWith('http')?'<img src="'+c.avatar_url+'" style="width:30px;height:30px;border-radius:50%;object-fit:cover;" onerror="this.outerHTML=\'🤖\'">':c.avatar_url||'🤖') + '</td><td><strong>' + c.name + '</strong></td><td><span class="badge '+(c.gender==='male'?'male':'female')+'">'+(c.gender==='male'?'♂ Male':'♀ Female')+'</span></td><td><span class="badge '+(c.ai_packages&&c.ai_packages.name?'premium':'online')+'">'+(c.ai_packages&&c.ai_packages.name?c.ai_packages.name:'ChatEverywhere')+'</span></td><td><span class="badge '+(c.status==='offline'?'offline':c.status==='maintenance'?'maintenance':'online')+'">'+(c.status||'online')+'</span></td><td><span class="badge '+(c.visibility==='private'?'private':c.visibility==='premium-only'?'premium-only':'online')+'">'+(c.visibility||'public')+'</span></td><td><button class="btn-sm p" onclick="editChar(\''+c.id+'\')">✏️ Edit</button> <button class="btn-sm d" onclick="delChar(\''+c.id+'\')">🗑️</button></td></tr>';
+                    var createdBy = c.creator_username ? '<span style="color:#60a5fa;">@'+c.creator_username+'</span>' : (c.created_by ? '<span style="color:var(--muted);">User</span>' : '<span class="badge online">System</span>');
+                    return '<tr><td>' + (c.avatar_url&&c.avatar_url.startsWith('http')?'<img src="'+c.avatar_url+'" style="width:30px;height:30px;border-radius:50%;object-fit:cover;" onerror="this.outerHTML=\'🤖\'">':c.avatar_url||'🤖') + '</td><td><strong>' + c.name + '</strong></td><td><span class="badge '+(c.gender==='male'?'male':'female')+'">'+(c.gender==='male'?'♂ Male':'♀ Female')+'</span></td><td>' + (c.ai_packages?.name?c.ai_packages.name+(c.ai_packages.is_premium?' ⭐':' Free'):'Default') + '</td><td>'+createdBy+'</td><td><span class="badge '+(c.status==='offline'?'offline':c.status==='maintenance'?'maintenance':'online')+'">'+(c.status||'online')+'</span></td><td><span class="badge '+(c.visibility==='private'?'private':c.visibility==='premium-only'?'premium-only':'online')+'">'+(c.visibility||'public')+'</span></td><td><button class="btn-sm p" onclick="editChar(\''+c.id+'\')">✏️</button> <button class="btn-sm d" onclick="delChar(\''+c.id+'\')">🗑️</button></td></tr>';
                 }).join('');
             } catch(e) {}
         }
@@ -340,9 +411,9 @@
                 var d = await api('/api/owner/packages');
                 allPkgs = d.packages || [];
                 var sel = document.getElementById('cPackage');
-                sel.innerHTML = '<option value="">Default (ChatEverywhere)</option>' + allPkgs.map(function(p) { return '<option value="'+p.id+'">'+p.name+'</option>'; }).join('');
+                sel.innerHTML = '<option value="">Default (ChatEverywhere)</option>' + allPkgs.map(function(p) { return '<option value="'+p.id+'">'+p.name+(p.is_premium?' ⭐Premium':' Free')+'</option>'; }).join('');
                 document.getElementById('pkgsBody').innerHTML = allPkgs.map(function(p) {
-                    return '<tr><td><strong>'+p.name+'</strong></td><td>'+p.url+'</td><td>'+(p.api_key?'✅ Set':'❌ None')+'</td><td><button class="btn-sm p" onclick="editPkg(\''+p.id+'\')">✏️ Edit</button> <button class="btn-sm d" onclick="delPkg(\''+p.id+'\')">🗑️</button></td></tr>';
+                    return '<tr><td><strong>'+p.name+'</strong></td><td>'+p.url+'</td><td>'+(p.model_name||'gpt-4')+'</td><td><span class="badge '+(p.is_premium?'premium':'free')+'">'+(p.is_premium?'⭐ Premium':'Free')+'</span></td><td>'+(p.api_key?'✅ Set':'❌ None')+'</td><td><button class="btn-sm p" onclick="editPkg(\''+p.id+'\')">✏️</button> <button class="btn-sm d" onclick="delPkg(\''+p.id+'\')">🗑️</button></td></tr>';
                 }).join('');
             } catch(e) {}
         }
@@ -358,11 +429,12 @@
         
         async function loadSettings() {
             try {
-                var d = await api('/api/settings');
+                var d = await api('/api/owner/settings');
                 if (d.settings) {
                     document.getElementById('qrisUrl').value = d.settings.qris_url || '';
                     document.getElementById('resendApiKey').value = d.settings.resend_api_key || '';
                     document.getElementById('senderEmail').value = d.settings.sender_email || '';
+                    document.getElementById('ownerWhatsapp').value = d.settings.owner_whatsapp || '';
                     var p = document.getElementById('qrisPreview');
                     p.src = d.settings.qris_url || '';
                     p.style.display = d.settings.qris_url ? 'block' : 'none';
@@ -371,23 +443,32 @@
         }
         
         async function saveSettings() {
-            await api('/api/settings', { method:'PUT', body: JSON.stringify({
+            await api('/api/owner/settings', { method:'PUT', body: JSON.stringify({
                 qris_url: document.getElementById('qrisUrl').value,
                 resend_api_key: document.getElementById('resendApiKey').value,
-                sender_email: document.getElementById('senderEmail').value
+                sender_email: document.getElementById('senderEmail').value,
+                owner_whatsapp: document.getElementById('ownerWhatsapp').value
             }) });
             document.getElementById('qrisPreview').src = document.getElementById('qrisUrl').value;
             document.getElementById('qrisPreview').style.display = document.getElementById('qrisUrl').value ? 'block' : 'none';
             toast('Settings saved!', 'ok');
         }
         
+        // ==================== USER ACTIONS ====================
         async function updUser(id, data) { await api('/api/owner/users/'+id, { method:'PUT', body:JSON.stringify(data) }); loadUsers(); }
         function banUser(id) { updUser(id, { is_banned: true }); }
         function unbanUser(id) { updUser(id, { is_banned: false }); }
-        function setRole(id, role) { updUser(id, { role: role }); }
+        function setRole(id, role) { var data = { role: role }; if (role === 'premium') data.max_ai_characters = 15; else if (role === 'user') data.max_ai_characters = 5; updUser(id, data); }
         function verifyUser(id) { updUser(id, { verified: true }); toast('User verified!', 'ok'); }
         function resetDaily(id) { updUser(id, { daily_message_count: 0, last_message_date: new Date().toISOString().split('T')[0] }); toast('Daily reset!', 'ok'); }
-        async function delUser(id) { if(!confirm('Delete permanently?'))return; await api('/api/owner/users/'+id,{method:'DELETE'}); loadUsers(); toast('Deleted','ok'); }
+        async function delUser(id) {
+            if(!confirm('Delete permanently? This cannot be undone.')) return;
+            try {
+                await api('/api/owner/users/'+id, { method:'DELETE' });
+                loadUsers();
+                toast('User deleted', 'ok');
+            } catch(e) { toast('Failed: ' + e.message, 'err'); }
+        }
         
         function showPrem(id, name) { premId = id; document.getElementById('premUser').textContent = name; document.getElementById('premModal').classList.remove('hidden'); }
         function closePremModal() { document.getElementById('premModal').classList.add('hidden'); premId = null; }
@@ -396,11 +477,12 @@
             var d = new Date();
             if (dur === 'permanent') d.setFullYear(d.getFullYear() + 100);
             else d.setDate(d.getDate() + parseInt(dur));
-            updUser(premId, { role: 'premium', premium_expired_at: d.toISOString() });
+            updUser(premId, { role: 'premium', premium_expired_at: d.toISOString(), max_ai_characters: 15 });
             closePremModal();
             toast('Premium '+(dur==='permanent'?'Permanent':dur+' days')+'!','ok');
         }
         
+        // ==================== CHARACTER ACTIONS ====================
         function showAddForm() {
             document.getElementById('editId').value = '';
             document.getElementById('charModalTitle').textContent = 'Add AI Character';
@@ -451,12 +533,15 @@
             try { await api(url, { method:method, body: JSON.stringify(data) }); closeCharModal(); loadChars(); toast(editId?'Updated!':'Created!','ok'); } catch(e) { toast(e.message,'err'); }
         }
         
-        async function delChar(id) { if(!confirm('Delete?'))return; await api('/api/owner/characters/'+id,{method:'DELETE'}); loadChars(); toast('Deleted','ok'); }
+        async function delChar(id) { if(!confirm('Delete AI + all chats?'))return; await api('/api/owner/characters/'+id,{method:'DELETE'}); loadChars(); toast('Deleted','ok'); }
         
+        // ==================== PACKAGE ACTIONS ====================
         function showPkgForm() {
             document.getElementById('pkgEditId').value = '';
             document.getElementById('pkgModalTitle').textContent = 'Add Package';
             document.getElementById('pkgForm').reset();
+            document.getElementById('pkgModel').value = 'gpt-4';
+            document.getElementById('pkgIsPremium').checked = false;
             document.getElementById('pkgModal').classList.remove('hidden');
         }
         
@@ -467,6 +552,8 @@
             document.getElementById('pkgName').value = p.name || '';
             document.getElementById('pkgUrl').value = p.url || '';
             document.getElementById('pkgApiKey').value = p.api_key || '';
+            document.getElementById('pkgModel').value = p.model_name || 'gpt-4';
+            document.getElementById('pkgIsPremium').checked = p.is_premium || false;
             document.getElementById('pkgModal').classList.remove('hidden');
         }
         
@@ -474,7 +561,7 @@
         
         async function savePkg(e) {
             e.preventDefault();
-            var data = { name: document.getElementById('pkgName').value, url: document.getElementById('pkgUrl').value, api_key: document.getElementById('pkgApiKey').value || null };
+            var data = { name: document.getElementById('pkgName').value, url: document.getElementById('pkgUrl').value, api_key: document.getElementById('pkgApiKey').value || null, model_name: document.getElementById('pkgModel').value, is_premium: document.getElementById('pkgIsPremium').checked };
             var editId = document.getElementById('pkgEditId').value;
             var url = editId ? '/api/owner/packages/'+editId : '/api/owner/packages';
             var method = editId ? 'PUT' : 'POST';
@@ -483,8 +570,15 @@
         
         async function delPkg(id) { if(!confirm('Delete?'))return; await api('/api/owner/packages/'+id,{method:'DELETE'}); loadPkgs(); toast('Deleted','ok'); }
         
+        // ==================== UTILS ====================
         function toast(m, t) { t = t || 'ok'; var e = document.createElement('div'); e.className = 'toast ' + t; e.textContent = m; document.body.appendChild(e); setTimeout(function() { e.remove(); }, 2500); }
-        async function logout() { await api('/api/auth/logout',{method:'POST'}); location.href = '/'; }
+        
+        async function logout() {
+            sessionStorage.clear();
+            localStorage.clear();
+            try { await api('/api/auth/logout',{method:'POST'}); } catch(e) {}
+            location.replace('/');
+        }
     </script>
 </body>
 </html>
