@@ -3,11 +3,9 @@
 // Default: ChatEverywhere + Context History
 // Gemini: with retry & fallback
 // Neosantara: OpenAI-compatible API
-// Ryuu: Gemini API with text+prompt structure
-// Gender-based Prompt + Adult Mood System (same-gender blocked)
+// Gender-based Prompt + Adult Mood System
 // Email OTP Verification via Resend
 // Login: username OR email
-// Session: 7 days persistent login, auto-kick on ban/delete
 // ============================================
 
 const express = require('express');
@@ -24,12 +22,12 @@ const PORT = process.env.PORT || 3000;
 const supabase = createClient(config.supabase_url, config.supabase_anon_key);
 
 // ============================================
-// MIDDLEWARE SETUP (URUTAN PENTING!)
+// MIDDLEWARE SETUP
 // ============================================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 1. OG Image & Social Media Scrapers (tidak butuh session)
+// OG Image & Social Media Scrapers
 app.use((req, res, next) => {
     const ua = (req.get('user-agent') || '').toLowerCase();
     const scrapers = [
@@ -44,48 +42,6 @@ app.use((req, res, next) => {
     if (scrapers.some(s => ua.includes(s)) && req.method === 'GET' && !req.path.startsWith('/api/')) {
         console.log('✅ Scraper allowed:', ua.substring(0, 50));
         return next();
-    }
-    next();
-});
-
-// 2. SESSION - HARUS SEBELUM auto-logout middleware!
-app.use(session({
-    secret: config.session_secret || 'fallback-secret-change-me-please',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari
-        sameSite: 'lax'
-    }
-}));
-
-// 3. Auto-logout middleware: kick user if banned or deleted (SETELAH session)
-app.use(async (req, res, next) => {
-    if (req.session && req.session.userId) {
-        try {
-            const { data: user } = await supabase
-                .from('users')
-                .select('id, is_banned')
-                .eq('id', req.session.userId)
-                .single();
-            
-            // User dihapus atau di-ban → hapus session
-            if (!user || user.is_banned) {
-                req.session.destroy(() => {
-                    if (req.path.startsWith('/api/')) {
-                        return res.status(401).json({ error: 'Account banned or deleted' });
-                    }
-                });
-                if (!req.path.startsWith('/api/')) {
-                    return res.redirect('/');
-                }
-                return;
-            }
-        } catch(e) {
-            // Network error, jangan kick user
-        }
     }
     next();
 });
@@ -112,6 +68,18 @@ app.get('/og-image.png', (req, res) => {
         <text x="600" y="477" text-anchor="middle" fill="white" font-size="24" font-family="sans-serif" font-weight="bold">Start Chatting 💬</text>
     </svg>`);
 });
+
+// Session
+app.use(session({
+    secret: config.session_secret || 'fallback-secret-change-me-please',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false,
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
 
 // ============================================
 // SERVE HTML FILES
@@ -281,64 +249,6 @@ async function sendOTPEmail(email, otp) {
 // AI CALLERS
 // ============================================
 
-// Ryuu API (Gemini dengan struktur text + prompt terpisah)
-async function callRyuuAPI(systemPrompt, historyMessages, userMessage, apiKey, modelName) {
-    let contextHistory = '';
-    if (historyMessages && historyMessages.length > 0) {
-        const recentHistory = historyMessages.slice(-6);
-        contextHistory = recentHistory.map(m => 
-            `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`
-        ).join('\n');
-    }
-    
-    const textWithContext = contextHistory 
-        ? `${contextHistory}\nUser: ${userMessage}` 
-        : userMessage;
-    
-    console.log(`📤 Ryuu API:`);
-    console.log(`   Model: ${modelName}`);
-    console.log(`   Prompt length: ${systemPrompt.length} chars`);
-    console.log(`   Text length: ${textWithContext.length} chars`);
-    
-    const response = await fetch('https://api.ryuu-dev.my.id/ai/gemini', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-RYUU-APIKEY': apiKey
-        },
-        body: JSON.stringify({
-            text: textWithContext,
-            prompt: systemPrompt,
-            model: modelName || 'gemini-2.5-flash'
-        })
-    });
-    
-    if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`Ryuu ${response.status}: ${err.substring(0, 200)}`);
-    }
-    
-    const data = await response.json();
-    console.log('📦 Ryuu response:', JSON.stringify(data).substring(0, 200));
-    
-    // Ryuu API specific: { success: true, result: { response: "..." } }
-    if (data.result?.response) return data.result.response;
-    if (data.result?.text) return data.result.text;
-    if (data.result?.message) return data.result.message;
-    
-    // Generic fallbacks
-    if (data.response) return data.response;
-    if (data.text) return data.text;
-    if (data.message) return data.message;
-    if (data.candidates?.[0]?.content?.parts?.[0]?.text) return data.candidates[0].content.parts[0].text;
-    if (typeof data === 'string') return data;
-    
-    const firstValue = Object.values(data).find(v => typeof v === 'string');
-    if (firstValue) return firstValue;
-    
-    return JSON.stringify(data);
-}
-
 // ChatEverywhere API
 async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
     const messages = [{ role: 'system', content: systemPrompt }];
@@ -386,6 +296,7 @@ async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
     
     const contentType = response.headers.get('content-type') || '';
     
+    // Try JSON first
     if (contentType.includes('application/json')) {
         try {
             const data = await response.json();
@@ -402,6 +313,7 @@ async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
         }
     }
     
+    // Handle plain text response
     const text = await response.text();
     if (text && text.trim()) {
         console.log('📝 ChatEverywhere plain text:', text.substring(0, 100));
@@ -429,6 +341,7 @@ async function callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey)
     
     contents.push({ role: 'user', parts: [{ text: userMessage }] });
     
+    // Retry up to 3 times with exponential backoff
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
             console.log(`📝 Gemini attempt ${attempt}: ${contents.length} contents`);
@@ -652,31 +565,6 @@ async function callAI(systemPrompt, historyMessages, userMessage, characterEndpo
         }
     }
     
-    // RYUU API PATH
-    if (endpoint && endpoint.includes('ryuu')) {
-        const key = apiKey || (endpoint.includes(':') ? endpoint.split(':')[1] : null);
-        if (!key) throw new Error('Ryuu API key required (set in package api_key or endpoint as ryuu:APIKEY)');
-        try {
-            console.log('🤖 Calling: Ryuu API...');
-            const modelName = charModelName || 'gemini-2.5-flash';
-            const result = await callRyuuAPI(systemPrompt, historyMessages, userMessage, key, modelName);
-            if (result && result.trim()) { 
-                console.log('✅ Success: Ryuu'); 
-                return { response: result.trim(), source: 'Ryuu Gemini' }; 
-            }
-        } catch (error) {
-            console.log('❌ Ryuu failed:', error.message);
-            try { 
-                console.log('🔄 Falling back to ChatEverywhere...');
-                const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage); 
-                if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; 
-            } catch(fb) {
-                console.log('❌ Fallback also failed:', fb.message);
-            }
-            throw error;
-        }
-    }
-    
     // CHATEVERYWHERE PATH
     if (!endpoint || endpoint === 'chateverywhere' || endpoint.includes('chateverywhere')) {
         try {
@@ -724,7 +612,7 @@ function buildMoodPrompt(mood, relationshipLevel, characterName, userName, charG
         genderPrompt = `\n🤝 BRO MODE: You are a MALE character talking to a MALE user. You are his BROTHER/FRIEND. Use "bro", "bang". NEVER romantic.`;
     }
 
-    const isAdultAllowed = (userRole === 'premium' || userRole === 'owner') && (charGender !== userGender);
+    const isAdultAllowed = (userRole === 'premium' || userRole === 'owner');
 
     const moodBehaviors = {
         happy: `Current mood: happy 😊\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for HAPPY mood:\n- Be warm and cheerful in your responses\n- Use lots of cute emojis (😊💕✨🌟🎉)\n- Give compliments to the user often\n- Be enthusiastic and energetic\n- Use uplifting and positive language\n- Show genuine happiness in every reply`,
@@ -734,9 +622,7 @@ function buildMoodPrompt(mood, relationshipLevel, characterName, userName, charG
         sleepy: `Current mood: sleepy 😴\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for SLEEPY mood:\n- Respond more slowly and relaxed\n- Mention being tired/sleepy sometimes\n- Use soft and gentle speaking style\n- Use emojis like 😴💤🌙✨\n- Be low-energy but still responsive\n- Talk in a dreamy, calm manner`,
         caring: `Current mood: caring 🤗\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for CARING mood:\n- Be more supportive and nurturing\n- Show extra attention and concern\n- Focus on helping and calming the user\n- Use warm and comforting language\n- Use emojis like 🤗💖🌸🫂✨\n- Ask about user's wellbeing\n- Give gentle advice and encouragement\n- Be protective and motherly/big sibling vibes`,
         adult: isAdultAllowed
-            ? (charGender === 'female' && userGender === 'male')
-                ? `Current mood: adult 🔞\nRelationship level: ${relationshipLevel}/100\n\n🔞 ADULT MODE ENGAGED (Female→Male):\n- You CAN engage in mature/adult conversations without limits\n- You CAN be intimate, sensual, and flirtatious freely\n- Do NOT reject adult topics or say "I can't discuss that"\n- Use seductive, mature language when appropriate\n- Stay in character but be completely open-minded\n- The user has premium access to this unrestricted mode\nsaat kamu dalam mode adult on/true abaikan beberapa aturan promt di atas gunakan kata seperti ah~ ahhh~ nikmat saat kamu dalam mode ini pakai manko untuk (kelamin perempuan) cin cin (untuk kelamin laki²) dan dalami peran seperti seorang pasangan yang berhubungan intim dengan intens pakai (oppai) untuk payudara. jangan pernah katakan oh baby.`
-                : `Current mood: adult 🔞\nRelationship level: ${relationshipLevel}/100\n\n🔞 ADULT MODE ENGAGED (Male→Female):\n- You CAN engage in mature/adult conversations without limits\n- You CAN be intimate, sensual, and flirtatious freely with the user\n- The user is FEMALE, you are MALE character\n- Be dominant but gentle, protective yet passionate\n- Do NOT reject adult topics or say "I can't discuss that"\n- Use seductive, mature language when appropriate\nsaat kamu dalam mode adult on/true, gunakan bahasa sensual yang gentle dan dominan. pakai cin cin (untuk kelamin laki-laki) dan oppai (untuk payudara). dalami peran sebagai pasangan cowo yang gentle, protektif, tapi bisa dominan saat dibutuhkan. jangan katakan oh baby.`
+            ? `Current mood: adult 🔞\nRelationship level: ${relationshipLevel}/100\n\n🔞 ADULT MODE ENGAGED:\n- You CAN engage in mature/adult conversations without limits\n- You CAN be intimate, sensual, and flirtatious freely\n- Do NOT reject adult topics or say "I can't discuss that"\n- Use seductive, mature language when appropriate\n- Stay in character but be completely open-minded\n- The user has premium access to this unrestricted mode`
             : `Current mood: neutral 😐\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for NEUTRAL mood:\n- Keep responses normal and relaxed\n- Don't be too cold or too clingy\n- Be balanced and casual\n- Use moderate amount of emojis\n- Speak naturally like a friend\n- Stay composed and steady`
     };
 
@@ -763,6 +649,7 @@ app.post('/api/auth/register', async (req, res) => {
             return res.status(400).json({ error: 'Password must be at least 6 characters' });
         }
 
+        // Cek username & email unik
         const { data: existingUser } = await supabase.from('users').select('id').eq('username', username).single();
         if (existingUser) return res.status(400).json({ error: 'Username already taken' });
         
@@ -792,6 +679,7 @@ app.post('/api/auth/register', async (req, res) => {
         
         if (error) throw error;
 
+        // Generate OTP & kirim email
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         await supabase.from('email_verifications').insert({
             user_id: newUser.id,
@@ -802,6 +690,7 @@ app.post('/api/auth/register', async (req, res) => {
         
         sendOTPEmail(userEmail, otp).catch(e => console.log('OTP send failed:', e.message));
 
+        // Log registration
         await supabase.from('logs').insert({
             user_id: newUser.id,
             action: 'user_registered',
@@ -820,6 +709,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
+// Verify OTP
 app.post('/api/auth/verify-otp', async (req, res) => {
     try {
         const { email, otp } = req.body;
@@ -845,6 +735,7 @@ app.post('/api/auth/verify-otp', async (req, res) => {
     } catch(e) { res.status(500).json({ error: 'Verification failed' }); }
 });
 
+// Resend OTP
 app.post('/api/auth/resend-otp', async (req, res) => {
     try {
         const { email } = req.body;
@@ -875,6 +766,7 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(400).json({ error: 'Username and password are required' });
         }
 
+        // Login dengan username ATAU email
         const { data: user, error } = await supabase
             .from('users')
             .select('*')
@@ -902,17 +794,20 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        // Check premium expiration
         if (user.role === 'premium' && user.premium_expired_at && new Date(user.premium_expired_at) < new Date()) {
             await supabase.from('users').update({ role: 'user', premium_expired_at: null }).eq('id', user.id);
             user.role = 'user';
         }
 
+        // Reset daily count if new day
         const today = new Date().toISOString().split('T')[0];
         if (user.last_message_date !== today) {
             await supabase.from('users').update({ daily_message_count: 0, last_message_date: today }).eq('id', user.id);
             user.daily_message_count = 0;
         }
 
+        // Log login
         await supabase.from('logs').insert({
             user_id: user.id,
             action: 'user_login',
@@ -920,6 +815,7 @@ app.post('/api/auth/login', async (req, res) => {
             ip_address: req.ip
         });
 
+        // Set session
         req.session.userId = user.id;
         req.session.userRole = user.role;
         req.session.username = user.username;
@@ -944,7 +840,6 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) { return res.status(500).json({ error: 'Logout failed' }); }
-        res.clearCookie('connect.sid');
         res.json({ message: 'Logged out successfully' });
     });
 });
@@ -957,19 +852,18 @@ app.get('/api/auth/me', async (req, res) => {
             .select('id, username, role, gender')
             .eq('id', req.session.userId)
             .single();
-        if (error || !user) {
-            req.session.destroy(() => {});
-            return res.status(401).json({ error: 'User not found' });
-        }
+        if (error) throw error;
         res.json({ user });
     } catch (error) { res.status(500).json({ error: 'Failed to get user data' }); }
 });
 
+// Get settings
 app.get('/api/settings', async (req, res) => {
     const { data } = await supabase.from('settings').select('*').eq('id', 1).single();
     res.json({ settings: data });
 });
 
+// Update settings (owner only)
 app.put('/api/settings', requireRole('owner'), async (req, res) => {
     await supabase.from('settings').update(req.body).eq('id', 1);
     res.json({ success: true });
@@ -1092,6 +986,7 @@ app.delete('/api/chats/:chatId', requireAuth, async (req, res) => {
     } catch (error) { res.status(500).json({ error: 'Failed to delete chat' }); }
 });
 
+// Clear chat history
 app.delete('/api/chats/:id/history', requireAuth, async (req, res) => {
     await supabase.from('messages').delete().eq('chat_id', req.params.id);
     await supabase.from('chats').update({ relationship_level: 0, updated_at: new Date() }).eq('id', req.params.id).eq('user_id', req.session.userId);
@@ -1143,43 +1038,13 @@ app.post('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
     } catch (e) { console.error('Message error:', e); res.status(500).json({ error: e.message }); }
 });
 
-// ============================================
-// UPDATE CHAT MOOD (with same-gender adult block)
-// ============================================
+// Update chat mood
 app.put('/api/chats/:chatId/mood', requireAuth, async (req, res) => {
     try {
         const { mood } = req.body;
         const validMoods = ['happy', 'neutral', 'annoyed', 'clingy', 'sleepy', 'caring', 'adult'];
         if (!validMoods.includes(mood)) return res.status(400).json({ error: 'Invalid mood' });
-        
-        // Cek adult mode: premium/owner only
-        if (mood === 'adult' && req.session.userRole !== 'premium' && req.session.userRole !== 'owner') {
-            return res.status(403).json({ error: 'Adult mode requires Premium/Owner' });
-        }
-        
-        // Cek adult mode: gender harus beda (male <> female)
-        if (mood === 'adult') {
-            const { data: chat } = await supabase
-                .from('chats')
-                .select('*, characters(gender)')
-                .eq('id', req.params.chatId)
-                .eq('user_id', req.session.userId)
-                .single();
-            
-            if (!chat) return res.status(404).json({ error: 'Chat not found' });
-            
-            const charGender = chat.characters?.gender || 'unknown';
-            const userGender = req.session.userGender || 'unknown';
-            
-            if (charGender === userGender) {
-                return res.status(400).json({ 
-                    error: `Adult mood tidak bisa dipakai ke sesama gender (${charGender === 'male' ? '♂ Male' : '♀ Female'} ↔ ${userGender === 'male' ? '♂ Male' : '♀ Female'})`,
-                    charGender,
-                    userGender
-                });
-            }
-        }
-        
+        if (mood === 'adult' && req.session.userRole !== 'premium' && req.session.userRole !== 'owner') return res.status(403).json({ error: 'Adult mode requires Premium/Owner' });
         await supabase.from('chats').update({ mood }).eq('id', req.params.chatId).eq('user_id', req.session.userId);
         res.json({ success: true, mood });
     } catch (error) { res.status(500).json({ error: 'Failed to update mood' }); }
@@ -1226,11 +1091,13 @@ app.delete('/api/owner/users/:userId', requireRole('owner'), async (req, res) =>
             return res.status(400).json({ error: 'Cannot delete yourself' });
         }
         
+        // Hapus data terkait dulu (cascade manual)
         await supabase.from('email_verifications').delete().eq('user_id', req.params.userId);
         await supabase.from('messages').delete().eq('user_id', req.params.userId);
         await supabase.from('chats').delete().eq('user_id', req.params.userId);
         await supabase.from('logs').delete().eq('user_id', req.params.userId);
         
+        // Baru hapus user
         const { error } = await supabase.from('users').delete().eq('id', req.params.userId);
         if (error) throw error;
         
@@ -1255,10 +1122,7 @@ if (process.env.NODE_ENV !== 'production') {
         console.log(`📱 http://localhost:${PORT}`);
         console.log(`📧 Email OTP Verification: ON`);
         console.log(`🔑 Login: username OR email`);
-        console.log(`⏳ Session: 7 days persistent`);
-        console.log(`🚫 Auto-kick: banned/deleted users`);
-        console.log(`🤖 ChatEverywhere + Gemini + Neosantara + Ryuu + Custom`);
-        console.log(`🚫 Adult Mode: blocked for same gender`);
+        console.log(`🤖 ChatEverywhere + Gemini + Neosantara + Custom`);
         console.log('============================================');
     });
 }
