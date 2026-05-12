@@ -551,12 +551,7 @@
       } catch(err) { errorEl.textContent = 'Connection error'; showToast('Connection error', 'error'); }
     }
 
-    // Auto-redirect hanya jika di halaman login (/) — JANGAN redirect kalau di /owner atau /chat
     (async function() {
-      // Skip redirect kalau bukan di halaman utama
-      var path = window.location.pathname;
-      if (path !== '/' && path !== '/index.html' && path !== '') return;
-      
       try {
         var res = await fetch('/api/auth/me');
         var data = await res.json();

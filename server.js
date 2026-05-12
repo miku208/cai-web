@@ -7,7 +7,6 @@
 // Gender-based Prompt + Adult Mood System
 // Email OTP Verification via Resend
 // Login: username OR email
-// User-Generated AI Characters with Package System
 // Security: Public settings filtered, Owner-only full settings
 // ============================================
 
@@ -78,12 +77,10 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: process.env.NODE_ENV === 'production',
+        secure: false,
         httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000,
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
-    },
-    proxy: true
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
 }));
 
 // ============================================
@@ -760,8 +757,7 @@ app.post('/api/auth/register', async (req, res) => {
                 verified: false,
                 daily_message_count: 0,
                 last_message_date: new Date().toISOString().split('T')[0],
-                is_banned: false,
-                max_ai_characters: 5
+                is_banned: false
             })
             .select()
             .single();
@@ -1044,148 +1040,6 @@ app.get('/api/characters', requireAuth, async (req, res) => {
 });
 
 // ============================================
-// USER AI CHARACTERS (User-Generated) - NEW FEATURE
-// ============================================
-
-// Get user's own AI characters
-app.get('/api/user/characters', requireAuth, async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('characters')
-            .select('*, ai_packages(name, is_premium, model_name)')
-            .eq('created_by', req.session.userId)
-            .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        res.json({ characters: data || [] });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get your characters' });
-    }
-});
-
-// Create user AI character
-app.post('/api/user/characters', requireAuth, async (req, res) => {
-    try {
-        const { name, avatar_url, description, system_prompt, package_id, gender } = req.body;
-        
-        if (!name || !system_prompt) {
-            return res.status(400).json({ error: 'Name and system prompt are required' });
-        }
-        
-        // Cek limit
-        const { data: user } = await supabase.from('users').select('role, max_ai_characters').eq('id', req.session.userId).single();
-        const { count } = await supabase.from('characters').select('*', { count: 'exact', head: true }).eq('created_by', req.session.userId);
-        
-        const maxLimit = user.max_ai_characters || 5;
-        if (count >= maxLimit) {
-            return res.status(400).json({ error: `Max ${maxLimit} AI characters reached. ${req.session.userRole === 'user' ? 'Upgrade to premium for 15!' : ''}` });
-        }
-        
-        // Ambil package info
-        let modelName = 'gpt-4';
-        let endpointUrl = '';
-        
-        if (package_id) {
-            const { data: pkg } = await supabase.from('ai_packages').select('*').eq('id', package_id).single();
-            if (!pkg) return res.status(400).json({ error: 'Package not found' });
-            if (pkg.is_premium && req.session.userRole === 'user') {
-                return res.status(403).json({ error: '⚠️ Package ini khusus Premium! Upgrade untuk menggunakannya.' });
-            }
-            modelName = pkg.model_name || 'gpt-4';
-            endpointUrl = pkg.url || '';
-        }
-        
-        const { data, error } = await supabase.from('characters').insert({
-            name, avatar_url: avatar_url || '🤖', description: description || '',
-            system_prompt, package_id: package_id || null,
-            model_name: modelName, endpoint_url: endpointUrl,
-            gender: gender || 'female', status: 'online', visibility: 'private',
-            created_by: req.session.userId
-        }).select().single();
-        
-        if (error) throw error;
-        
-        await supabase.from('logs').insert({
-            user_id: req.session.userId, action: 'user_created_character',
-            details: { character_name: name, package_id }, ip_address: req.ip
-        });
-        
-        res.json({ character: data });
-    } catch (error) {
-        res.status(500).json({ error: error.message || 'Failed to create character' });
-    }
-});
-
-// Update user AI character
-app.put('/api/user/characters/:id', requireAuth, async (req, res) => {
-    try {
-        const { data: existing } = await supabase.from('characters').select('created_by').eq('id', req.params.id).single();
-        if (!existing) return res.status(404).json({ error: 'Character not found' });
-        if (existing.created_by !== req.session.userId && req.session.userRole !== 'owner') {
-            return res.status(403).json({ error: 'Not your character' });
-        }
-        
-        const { name, avatar_url, description, system_prompt, package_id, model_name, gender } = req.body;
-        
-        if (package_id && req.session.userRole === 'user') {
-            const { data: pkg } = await supabase.from('ai_packages').select('is_premium').eq('id', package_id).single();
-            if (pkg?.is_premium) return res.status(403).json({ error: 'Package premium hanya untuk user Premium.' });
-        }
-        
-        const updates = {};
-        if (name !== undefined) updates.name = name;
-        if (avatar_url !== undefined) updates.avatar_url = avatar_url;
-        if (description !== undefined) updates.description = description;
-        if (system_prompt !== undefined) updates.system_prompt = system_prompt;
-        if (package_id !== undefined) updates.package_id = package_id;
-        if (model_name !== undefined) updates.model_name = model_name;
-        if (gender !== undefined) updates.gender = gender;
-        
-        await supabase.from('characters').update(updates).eq('id', req.params.id);
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Delete user AI character
-app.delete('/api/user/characters/:id', requireAuth, async (req, res) => {
-    try {
-        const { data: existing } = await supabase.from('characters').select('created_by').eq('id', req.params.id).single();
-        if (!existing) return res.status(404).json({ error: 'Character not found' });
-        if (existing.created_by !== req.session.userId && req.session.userRole !== 'owner') {
-            return res.status(403).json({ error: 'Not your character' });
-        }
-        
-        // Cascade delete chats & messages
-        const { data: chats } = await supabase.from('chats').select('id').eq('character_id', req.params.id);
-        if (chats) {
-            for (const chat of chats) {
-                await supabase.from('messages').delete().eq('chat_id', chat.id);
-            }
-            await supabase.from('chats').delete().eq('character_id', req.params.id);
-        }
-        
-        await supabase.from('characters').delete().eq('id', req.params.id);
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Get available packages for user
-app.get('/api/user/packages', requireAuth, async (req, res) => {
-    try {
-        let query = supabase.from('ai_packages').select('*').order('name');
-        if (req.session.userRole === 'user') query = query.eq('is_premium', false);
-        const { data } = await query;
-        res.json({ packages: data || [] });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to get packages' });
-    }
-});
-
-// ============================================
 // CHAT ROUTES
 // ============================================
 
@@ -1318,7 +1172,7 @@ app.get('/api/owner/stats', requireRole('owner'), async (req, res) => {
 app.get('/api/owner/users', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('users').select('*').order('created_at',{ascending:false}); res.json({ users:(data||[]).map(({password_hash,...u})=>u) }); });
 app.put('/api/owner/users/:userId', requireRole('owner'), async (req, res) => {
     const updates = {};
-    ['role','premium_expired_at','is_banned','daily_message_count','last_message_date','gender','verified','max_ai_characters'].forEach(k=>{ if(req.body[k]!==undefined) updates[k]=req.body[k]; });
+    ['role','premium_expired_at','is_banned','daily_message_count','last_message_date','gender','verified'].forEach(k=>{ if(req.body[k]!==undefined) updates[k]=req.body[k]; });
     await supabase.from('users').update(updates).eq('id',req.params.userId);
     res.json({ success:true });
 });
@@ -1332,7 +1186,6 @@ app.delete('/api/owner/users/:userId', requireRole('owner'), async (req, res) =>
         await supabase.from('email_verifications').delete().eq('user_id', req.params.userId);
         await supabase.from('messages').delete().eq('user_id', req.params.userId);
         await supabase.from('chats').delete().eq('user_id', req.params.userId);
-        await supabase.from('characters').delete().eq('created_by', req.params.userId);
         await supabase.from('logs').delete().eq('user_id', req.params.userId);
         
         // Baru hapus user
@@ -1361,8 +1214,6 @@ if (process.env.NODE_ENV !== 'production') {
         console.log(`📧 Email OTP Verification: ON`);
         console.log(`🔑 Login: username OR email`);
         console.log(`🔒 Public settings: filtered (no API keys)`);
-        console.log(`👤 User-Generated AI Characters: ON`);
-        console.log(`📦 Package System with Premium: ON`);
         console.log(`🤖 ChatEverywhere + Gemini + Neosantara + Ryuu + Custom`);
         console.log('============================================');
     });

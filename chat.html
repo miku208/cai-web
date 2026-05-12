@@ -21,16 +21,9 @@
         .sb-head { padding:16px; border-bottom:1px solid var(--border); }
         .sb-head h3 { font-size:16px; font-weight:700; margin-bottom:10px; display:flex; justify-content:space-between; }
         .sb-head input { width:100%; padding:10px; background:var(--card); border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:13px; outline:none; }
-        .sb-actions { display:flex; gap:6px; padding:8px 6px; }
-        .sb-actions button { flex:1; padding:8px; border-radius:8px; border:1px solid var(--border); cursor:pointer; font-size:11px; font-weight:600; font-family:inherit; transition:all .2s; }
-        .btn-my-ai { background:var(--card); color:var(--text); }
-        .btn-my-ai:hover { background:rgba(124,58,237,0.15); color:var(--acc); }
-        .btn-my-ai.active { background:rgba(124,58,237,0.25); color:var(--acc); border-color:var(--acc); }
-        .btn-create-ai { background:var(--acc); color:white; border-color:var(--acc); }
-        .btn-create-ai:hover { background:#6d28d9; }
         .sb-list { flex:1; overflow-y:auto; padding:6px; }
         
-        .ai-item { display:flex; align-items:center; gap:10px; padding:12px; border-radius:12px; cursor:pointer; margin-bottom:1px; position:relative; }
+        .ai-item { display:flex; align-items:center; gap:10px; padding:12px; border-radius:12px; cursor:pointer; margin-bottom:1px; }
         .ai-item:active { background:rgba(255,255,255,0.05); }
         .ai-item.active { background:rgba(124,58,237,0.25); }
         .ai-av { width:42px;height:42px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;overflow:hidden; }
@@ -41,12 +34,6 @@
         .ai-badge { font-size:9px;padding:2px 6px;border-radius:8px;display:inline-block;margin-top:2px; }
         .ai-badge.private { background:rgba(239,68,68,0.2);color:#f87171; }
         .ai-badge.premium { background:rgba(245,158,11,0.2);color:#fbbf24; }
-        .ai-badge.mine { background:rgba(34,197,94,0.2);color:#4ade80; }
-        .ai-actions { display:flex; position:absolute; right:8px; top:50%; transform:translateY(-50%); gap:4px; opacity:0.5; transition:opacity .2s; }
-        .ai-item:hover .ai-actions { opacity:1; }
-        .ai-actions button { width:26px;height:26px;border-radius:50%;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center; }
-        .btn-edit-ai { background:rgba(124,58,237,0.3);color:var(--acc); }
-        .btn-del-ai { background:rgba(239,68,68,0.3);color:var(--red); }
         
         .sb-foot { padding:12px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between; }
         .u-inf { display:flex;align-items:center;gap:8px; }
@@ -106,19 +93,26 @@
         
         .modal { position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:100; }
         .modal.hidden { display:none; }
-        .modal-b { background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:90%;max-width:500px;max-height:85vh;overflow-y:auto; }
+        .modal-b { background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:90%;max-width:400px; }
         .modal-b h3 { margin-bottom:12px;font-size:16px; }
         .btn-p { background:var(--acc);color:white; padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-family:inherit; }
         .btn-s { background:rgba(255,255,255,0.04);color:var(--text);border:1px solid var(--border); padding:10px 20px;border-radius:8px;cursor:pointer;font-weight:600;font-family:inherit; }
         .form-group { margin-bottom:12px; } .form-group label { display:block;margin-bottom:4px;color:var(--muted);font-size:12px; }
-        .form-group input, .form-group textarea, .form-group select { width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;outline:none; }
-        .form-group textarea { resize:vertical; min-height:60px; }
+        .form-group input, .form-group select { width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;outline:none; }
         .form-group select option { background:var(--card);color:var(--text); }
         
         .toast { position:fixed;bottom:70px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:10px;color:white;font-weight:500;z-index:200;font-size:12px;animation:fadeUp .3s;pointer-events:none; }
         .toast.ok { background:var(--green); } .toast.err { background:var(--red); } .toast.inf { background:var(--acc); }
         @keyframes fadeUp { from{opacity:0;transform:translateX(-50%) translateY(8px);} to{opacity:1;transform:translateX(-50%) translateY(0);} }
         .hidden { display:none !important; }
+        
+        /* Access Denied */
+        .access-denied {
+            display:flex;align-items:center;justify-content:center;
+            height:100vh;color:#ef4444;font-family:sans-serif;font-size:18px;
+            flex-direction:column;gap:12px;text-align:center;padding:20px;
+        }
+        .access-denied .icon { font-size:48px; }
         
         @media (max-width:768px) {
             .sidebar { position:fixed;transform:translateX(-100%); }
@@ -129,15 +123,11 @@
 </head>
 <body>
     <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
-    <div class="app">
+    <div class="app" id="appContent">
         <aside class="sidebar" id="sidebar">
             <div class="sb-head">
-                <h3>🤖 AI Characters <button onclick="refreshAIs()" style="background:var(--acc);border:none;color:white;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;">↻</button></h3>
+                <h3> AI Characters <button onclick="refreshAIs()" style="background:var(--acc);border:none;color:white;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;">↻</button></h3>
                 <input type="text" placeholder="Search AI..." oninput="filterAIs(this.value)">
-            </div>
-            <div class="sb-actions">
-                <button class="btn-my-ai" id="btnMyAI" onclick="showMyAI()">🤖 AI Saya</button>
-                <button class="btn-create-ai" onclick="showCreateAI()">+ Buat AI</button>
             </div>
             <div class="sb-list" id="aiList"><div style="text-align:center;color:var(--muted);padding:20px;">Loading...</div></div>
             <div class="sb-foot">
@@ -178,7 +168,7 @@
                     </div>
                 </div>
             </header>
-            <div class="msgs" id="msgs"><div class="welcome"><span>💬</span><h2 style="color:var(--text);">Select an AI Character</h2><p>Choose from the sidebar to start chatting</p></div></div>
+            <div class="msgs" id="msgs"><div class="welcome"><span></span><h2 style="color:var(--text);">Select an AI Character</h2><p>Choose from the sidebar to start chatting</p></div></div>
             <div class="limit" id="limit">Messages: --/--</div>
             <div class="inp-area hidden" id="inpArea">
                 <div class="inp-wrap"><textarea id="chatInput" placeholder="Type a message..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px';"></textarea><button class="snd" id="sndBtn" onclick="sendMsg()">➤</button></div>
@@ -186,55 +176,28 @@
         </main>
     </div>
 
-    <!-- Limit Modal -->
     <div class="modal hidden" id="limitModal"><div class="modal-b" style="text-align:center;"><span style="font-size:40px;">✨</span><h3>Daily Limit Reached</h3><p style="color:var(--muted);">Come back tomorrow! 🌙</p><button class="btn-p" onclick="document.getElementById('limitModal').classList.add('hidden')">Got it</button></div></div>
-    
-    <!-- Password Modal -->
     <div class="modal hidden" id="passModal"><div class="modal-b"><h3>🔑 Change Password</h3>
         <div class="form-group"><label>Current Password</label><input type="password" id="currPass"></div>
         <div class="form-group"><label>New Password</label><input type="password" id="newPass"></div>
         <div class="form-group"><label>Confirm</label><input type="password" id="confPass"></div>
         <div style="display:flex;gap:10px;justify-content:flex-end;"><button class="btn-s" onclick="closePassModal()">Cancel</button><button class="btn-p" onclick="changePassword()">Save</button></div>
     </div></div>
-    
-    <!-- Gender Modal -->
     <div class="modal hidden" id="genderModal"><div class="modal-b"><h3>⚤ Change Gender</h3>
         <p style="color:var(--muted);font-size:12px;">This affects how AI treats you</p>
         <div class="form-group"><label>Your Gender</label><select id="userGender"><option value="male">Male</option><option value="female">Female</option></select></div>
         <div style="display:flex;gap:10px;justify-content:flex-end;"><button class="btn-s" onclick="closeGenderModal()">Cancel</button><button class="btn-p" onclick="changeGender()">Save</button></div>
     </div></div>
 
-    <!-- Create/Edit AI Modal -->
-    <div class="modal hidden" id="createAIModal">
-        <div class="modal-b">
-            <h3 id="createAITitle">✨ Buat AI Karakter</h3>
-            <form id="createAIForm" onsubmit="saveAI(event)">
-                <input type="hidden" id="editAIId">
-                <div class="form-group"><label>Nama *</label><input type="text" id="aiName" required></div>
-                <div class="form-group"><label>Avatar (emoji/URL)</label><input type="text" id="aiAvatar" value="🤖"></div>
-                <div class="form-group"><label>Deskripsi</label><input type="text" id="aiDesc" placeholder="Deskripsi singkat"></div>
-                <div class="form-group"><label>System Prompt *</label><textarea id="aiPrompt" rows="3" required placeholder="Kamu adalah..."></textarea></div>
-                <div class="form-group"><label>Gender</label><select id="aiGender"><option value="female">Female ♀</option><option value="male">Male ♂</option></select></div>
-                <div class="form-group">
-                    <label>Package AI</label>
-                    <select id="aiPackage" onchange="updatePackageInfo()">
-                        <option value="">Default (ChatEverywhere - GPT-4)</option>
-                    </select>
-                    <p id="packageInfo" style="font-size:10px;color:var(--muted);margin-top:4px;"></p>
-                </div>
-                <p id="aiLimit" style="font-size:11px;color:var(--muted);margin-bottom:8px;"></p>
-                <div style="display:flex;gap:10px;justify-content:flex-end;">
-                    <button type="button" class="btn-s" onclick="closeCreateAI()">Cancel</button>
-                    <button type="submit" class="btn-p">Simpan</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <script>
+        // ==================== SECURITY: AUTH CHECK ====================
         (function() {
+            // Prevent back button cache
             history.pushState(null, '', location.href);
-            window.addEventListener('popstate', function() { history.pushState(null, '', location.href); location.replace('/'); });
+            window.addEventListener('popstate', function() {
+                history.pushState(null, '', location.href);
+                location.replace('/');
+            });
         })();
         
         async function api(url, opt) {
@@ -247,83 +210,84 @@
         
         var MOODS = { happy:'😊', neutral:'😐', clingy:'🥺', annoyed:'😤', sleepy:'😴', caring:'🤗', adult:'🔞' };
         var user = null, ai = null, ais = [], chatId = null, busy = false;
-        var mood = 'neutral', relLevel = 0, showingMyAI = false, allPackages = [];
+        var mood = 'neutral', relLevel = 0;
         
         function saveLS() { try { localStorage.setItem('lc', JSON.stringify({cid:chatId, mid:ai?ai.id:null, mood:mood, rel:relLevel, t:Date.now()})); } catch(e) {} }
         function loadLS() { try { var d = JSON.parse(localStorage.getItem('lc')); if (d && Date.now()-d.t < 864e5) return d; } catch(e) {} return null; }
         function getBadge(v) { if (v === 'private') return '<span class="ai-badge private">🔒 Private</span>'; if (v === 'premium-only') return '<span class="ai-badge premium">⭐ Premium</span>'; return ''; }
         
+        // Cek session setiap user balik ke tab
         document.addEventListener('visibilitychange', async function() {
             if (document.visibilityState === 'visible' && user) {
-                try { var d = await api('/api/auth/me'); if (!d.user) { localStorage.removeItem('lc'); sessionStorage.clear(); location.replace('/'); } } catch(e) { localStorage.removeItem('lc'); sessionStorage.clear(); location.replace('/'); }
+                try {
+                    var d = await api('/api/auth/me');
+                    if (!d.user) { forceLogout('Session expired'); }
+                } catch(e) { forceLogout('Session expired'); }
             }
         });
         
+        function forceLogout(msg) {
+            localStorage.removeItem('lc');
+            sessionStorage.clear();
+            document.getElementById('appContent').innerHTML = '<div class="access-denied"><span class="icon">⛔</span>'+msg+'<br>Redirecting to login...</div>';
+            setTimeout(function() { location.replace('/'); }, 1500);
+        }
+        
         (async function() {
             try {
-                var d = await api('/api/auth/me'); user = d.user;
-                if (!user) { localStorage.removeItem('lc'); sessionStorage.clear(); location.replace('/'); return; }
+                var d = await api('/api/auth/me');
+                user = d.user;
+                if (!user) {
+                    forceLogout('Access Denied - Please login first');
+                    return;
+                }
+                
                 document.getElementById('uAv').textContent = user.username[0].toUpperCase();
                 document.getElementById('uNm').textContent = user.username;
                 document.getElementById('uRl').textContent = user.role;
                 if (user.role === 'owner') document.getElementById('btnOwner').style.display = 'block';
+                
                 await refreshAIs(); updLimit();
                 var last = loadLS();
-                if (last && last.mid) { var a = ais.find(function(x) { return x.id === last.mid; }); if (a) { mood = last.mood || 'neutral'; relLevel = last.rel || 0; selectAI(a, last.cid); updMoodUI(); updRelUI(); return; } }
+                if (last && last.mid) { 
+                    var a = ais.find(function(x) { return x.id === last.mid; }); 
+                    if (a) { mood = last.mood || 'neutral'; relLevel = last.rel || 0; selectAI(a, last.cid); updMoodUI(); updRelUI(); return; } 
+                }
                 if (ais.length) selectAI(ais[0]);
-            } catch(e) { localStorage.removeItem('lc'); sessionStorage.clear(); location.replace('/'); }
+            } catch(e) { 
+                forceLogout('Access Denied - Please login first');
+            }
         })();
-        setInterval(function() { if (!showingMyAI) refreshAIs(); }, 30000);
+        setInterval(refreshAIs, 30000);
         
-        function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('on'); }
+        function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('overlay').classList.add('on'); refreshAIs(); }
         function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('on'); }
         function toast(m, t) { t = t || 'inf'; var e = document.createElement('div'); e.className = 'toast ' + (t==='error'?'err':t==='success'?'ok':'inf'); e.textContent = m; document.body.appendChild(e); setTimeout(function() { e.remove(); }, 2500); }
         
-        async function refreshAIs() { try { var d = await api('/api/characters'); ais = d.characters || []; showingMyAI = false; renderSidebar(); document.getElementById('btnMyAI').classList.remove('active'); } catch(e) {} }
-        
-        async function showMyAI() {
-            if (showingMyAI) { refreshAIs(); return; }
-            try { var d = await api('/api/user/characters'); ais = d.characters || []; showingMyAI = true; document.getElementById('btnMyAI').classList.add('active'); renderSidebar(); } catch(e) { toast(e.message, 'error'); }
-        }
+        async function refreshAIs() { try { var d = await api('/api/characters'); ais = d.characters || []; renderSidebar(); } catch(e) {} }
         
         function renderSidebar() {
             var el = document.getElementById('aiList');
             el.innerHTML = ais.map(function(a) {
                 var av = a.avatar_url && a.avatar_url.startsWith('http') ? '<img src="'+a.avatar_url+'" onerror="this.parentElement.textContent=\'🤖\'">' : (a.avatar_url || '🤖');
                 var gb = a.gender === 'male' ? ' <span style="font-size:9px;color:#60a5fa;">♂</span>' : (a.gender === 'female' ? ' <span style="font-size:9px;color:#f472b6;">♀</span>' : '');
-                var isMine = a.created_by === user.id;
-                var badge = '';
-                if (isMine) { badge = '<span class="ai-badge mine">🔒 Milikmu</span>'; }
-                else if (a.created_by) { badge = '<span class="ai-badge" style="background:rgba(59,130,246,0.15);color:#60a5fa;">👤 User AI</span>'; }
-                else { badge = getBadge(a.visibility); }
-                var creatorName = '';
-                if (a.created_by && !isMine) { creatorName = '<span style="font-size:9px;color:var(--muted);display:block;">by User</span>'; }
-                else if (!a.created_by) { creatorName = '<span style="font-size:9px;color:var(--muted);display:block;">by MikuHost</span>'; }
-                else { creatorName = '<span style="font-size:9px;color:var(--muted);display:block;">by Kamu</span>'; }
-                var actions = isMine ? '<div class="ai-actions"><button class="btn-edit-ai" onclick="event.stopPropagation();editAI(\''+a.id+'\')" title="Edit">✏️</button><button class="btn-del-ai" onclick="event.stopPropagation();deleteAI(\''+a.id+'\')" title="Hapus">🗑️</button></div>' : '';
-                return '<div class="ai-item '+(ai&&ai.id===a.id?'active':'')+'" onclick="selectAIById(\''+a.id+'\')"><div class="ai-av">'+av+'</div><div class="ai-inf"><div class="n">'+a.name+gb+'</div><div class="d">'+(a.description||creatorName)+'</div>'+badge+'</div>'+actions+'</div>';
-            }).join('') || '<div style="text-align:center;color:var(--muted);padding:20px;">'+(showingMyAI?'Belum ada AI buatanmu. Klik "+ Buat AI"':'No AI found')+'</div>';
-        }
-        
-        function filterAIs(q) {
-            var f = q ? ais.filter(function(a) { return a.name.toLowerCase().includes(q.toLowerCase()); }) : ais;
-            var el = document.getElementById('aiList');
-            el.innerHTML = f.map(function(a) {
-                var av = a.avatar_url && a.avatar_url.startsWith('http') ? '<img src="'+a.avatar_url+'" onerror="this.parentElement.textContent=\'🤖\'">' : (a.avatar_url || '🤖');
-                var gb = a.gender === 'male' ? ' <span style="font-size:9px;color:#60a5fa;">♂</span>' : (a.gender === 'female' ? ' <span style="font-size:9px;color:#f472b6;">♀</span>' : '');
-                var isMine = a.created_by === user.id;
-                var badge = isMine ? '<span class="ai-badge mine">🔒 Milikmu</span>' : (a.created_by ? '<span class="ai-badge" style="background:rgba(59,130,246,0.15);color:#60a5fa;">👤 User AI</span>' : getBadge(a.visibility));
-                var creatorName = a.created_by && !isMine ? '<span style="font-size:9px;color:var(--muted);display:block;">by User</span>' : (!a.created_by ? '<span style="font-size:9px;color:var(--muted);display:block;">by MikuHost</span>' : '<span style="font-size:9px;color:var(--muted);display:block;">by Kamu</span>');
-                return '<div class="ai-item '+(ai&&ai.id===a.id?'active':'')+'" onclick="selectAIById(\''+a.id+'\')"><div class="ai-av">'+av+'</div><div class="ai-inf"><div class="n">'+a.name+gb+'</div><div class="d">'+(a.description||creatorName)+'</div>'+badge+'</div></div>';
+                return '<div class="ai-item '+(ai&&ai.id===a.id?'active':'')+'" onclick="selectAIById(\''+a.id+'\')"><div class="ai-av">'+av+'</div><div class="ai-inf"><div class="n">'+a.name+gb+'</div><div class="d">'+(a.description||a.status||'Online')+'</div>'+getBadge(a.visibility)+'</div></div>';
             }).join('') || '<div style="text-align:center;color:var(--muted);">No AI found</div>';
         }
+        
+        function filterAIs(q) { var f = q ? ais.filter(function(a) { return a.name.toLowerCase().includes(q.toLowerCase()); }) : ais; var el = document.getElementById('aiList'); el.innerHTML = f.map(function(a) { var av = a.avatar_url && a.avatar_url.startsWith('http') ? '<img src="'+a.avatar_url+'" onerror="this.parentElement.textContent=\'🤖\'">' : (a.avatar_url || '🤖'); var gb = a.gender === 'male' ? ' <span style="font-size:9px;color:#60a5fa;">♂</span>' : (a.gender === 'female' ? ' <span style="font-size:9px;color:#f472b6;">♀</span>' : ''); return '<div class="ai-item '+(ai&&ai.id===a.id?'active':'')+'" onclick="selectAIById(\''+a.id+'\')"><div class="ai-av">'+av+'</div><div class="ai-inf"><div class="n">'+a.name+gb+'</div><div class="d">'+(a.description||a.status||'Online')+'</div>'+getBadge(a.visibility)+'</div></div>'; }).join('') || '<div style="text-align:center;color:var(--muted);">No AI found</div>'; }
         
         function selectAIById(id) { var a = ais.find(function(x) { return x.id === id; }); if (a) selectAI(a); closeSidebar(); }
         
         function updMoodUI() {
             var adultOpt = document.querySelector('.mood-opt.adult-mood');
-            if (user.role !== 'premium' && user.role !== 'owner') { adultOpt.classList.add('locked'); adultOpt.title = 'Premium/Owner only'; if (mood === 'adult') mood = 'neutral'; }
-            else { adultOpt.classList.remove('locked'); }
+            if (user.role !== 'premium' && user.role !== 'owner') {
+                adultOpt.classList.add('locked');
+                adultOpt.title = 'Premium/Owner only';
+                if (mood === 'adult') mood = 'neutral';
+            } else {
+                adultOpt.classList.remove('locked');
+            }
             document.getElementById('moodE').textContent = MOODS[mood] || '😐';
             document.getElementById('moodT').textContent = mood === 'adult' ? 'adult' : mood;
             document.getElementById('moodBtn').classList.toggle('adult-active', mood === 'adult');
@@ -333,10 +297,44 @@
         function toggleMood() { document.getElementById('moodDD').classList.toggle('show'); }
         
         async function changeMood(m) {
-            if (m === 'adult' && user.role !== 'premium' && user.role !== 'owner') { toast('🔞 Adult mode requires Premium/Owner access', 'error'); return; }
-            if (m === 'adult' && ai) { var charGender = ai.gender || 'unknown', userGender = user.gender || 'unknown'; if (charGender === userGender) { var genderLabel = charGender === 'male' ? '♂ Male' : '♀ Female'; toast('❌ Adult mood tidak bisa dipakai ke sesama gender (' + genderLabel + ' ↔ ' + genderLabel + ')', 'error'); document.getElementById('moodDD').classList.remove('show'); return; } }
-            var prevMood = mood; mood = m; updMoodUI(); document.getElementById('moodDD').classList.remove('show');
-            if (chatId) { try { await api('/api/chats/' + chatId + '/mood', { method:'PUT', body: JSON.stringify({ mood: m }) }); } catch(e) { mood = prevMood; updMoodUI(); toast(e.message, 'error'); return; } }
+            // Cek adult mode: premium/owner only
+            if (m === 'adult' && user.role !== 'premium' && user.role !== 'owner') {
+                toast('🔞 Adult mode requires Premium/Owner access', 'error');
+                return;
+            }
+            
+            // Cek same-gender sebelum kirim ke backend
+            if (m === 'adult' && ai) {
+                var charGender = ai.gender || 'unknown';
+                var userGender = user.gender || 'unknown';
+                if (charGender === userGender) {
+                    var genderLabel = charGender === 'male' ? '♂ Male' : '♀ Female';
+                    toast('❌ Adult mood tidak bisa dipakai ke sesama gender (' + genderLabel + ' ↔ ' + genderLabel + ')', 'error');
+                    document.getElementById('moodDD').classList.remove('show');
+                    return;
+                }
+            }
+            
+            // Simpan mood sebelumnya untuk rollback
+            var prevMood = mood;
+            mood = m;
+            updMoodUI();
+            document.getElementById('moodDD').classList.remove('show');
+            
+            if (chatId) {
+                try {
+                    await api('/api/chats/' + chatId + '/mood', { 
+                        method: 'PUT', 
+                        body: JSON.stringify({ mood: m }) 
+                    });
+                } catch(e) {
+                    // Rollback kalau backend nge-block
+                    mood = prevMood;
+                    updMoodUI();
+                    toast(e.message, 'error');
+                    return;
+                }
+            }
             saveLS();
         }
         
@@ -377,89 +375,32 @@
                 if (d.aiMessage) addBubble('assistant', d.aiMessage.content);
                 if (d.relationshipLevel !== undefined) { relLevel = d.relationshipLevel; updRelUI(); }
                 updLimit(); saveLS();
-            } catch(e) { var t = document.getElementById('typing'); if (t) t.remove(); if (e.message.indexOf('limit') !== -1) document.getElementById('limitModal').classList.remove('hidden'); else if (e.message.indexOf('Unauthorized') !== -1 || e.message.indexOf('banned') !== -1) { localStorage.removeItem('lc'); sessionStorage.clear(); location.replace('/'); } else toast(e.message, 'error'); }
+            } catch(e) { 
+                var t = document.getElementById('typing'); if (t) t.remove(); 
+                if (e.message.indexOf('limit') !== -1) document.getElementById('limitModal').classList.remove('hidden'); 
+                else if (e.message.indexOf('Unauthorized') !== -1 || e.message.indexOf('banned') !== -1) forceLogout(e.message);
+                else toast(e.message, 'error'); 
+            }
             busy = false; document.getElementById('sndBtn').disabled = false; inp.focus();
         }
         
         async function updLimit() { try { var d = await api('/api/user/stats'); document.getElementById('limit').textContent = d.role === 'owner' ? 'Unlimited' : d.remaining+'/'+d.dailyLimit; } catch(e) {} }
         
-        // ==================== CREATE & EDIT AI ====================
-        async function showCreateAI() {
-            try {
-                var d = await api('/api/user/packages'); allPackages = d.packages || [];
-                var sel = document.getElementById('aiPackage');
-                sel.innerHTML = '<option value="">Default (ChatEverywhere - GPT-4)</option>' + allPackages.map(function(p) { return '<option value="'+p.id+'">'+p.name+(p.is_premium?' ⭐Premium':' Free')+'</option>'; }).join('');
-                var myAIs = await api('/api/user/characters');
-                var count = (myAIs.characters || []).length;
-                var max = user.role === 'premium' ? 15 : (user.role === 'owner' ? 999 : 5);
-                document.getElementById('aiLimit').textContent = 'AI dibuat: ' + count + '/' + max;
-                document.getElementById('editAIId').value = '';
-                document.getElementById('createAITitle').textContent = '✨ Buat AI Karakter';
-                document.getElementById('createAIForm').reset();
-                document.getElementById('aiAvatar').value = '🤖';
-                document.getElementById('aiGender').value = 'female';
-                document.getElementById('packageInfo').textContent = '';
-                document.getElementById('createAIModal').classList.remove('hidden');
-            } catch(e) { toast(e.message, 'error'); }
-        }
-        
-        function closeCreateAI() { document.getElementById('createAIModal').classList.add('hidden'); }
-        
-        function updatePackageInfo() {
-            var pkgId = document.getElementById('aiPackage').value;
-            var pkg = allPackages.find(function(p) { return p.id === pkgId; });
-            var info = document.getElementById('packageInfo');
-            if (pkg) { info.textContent = 'Model: ' + (pkg.model_name || 'gpt-4') + (pkg.is_premium ? ' | ⭐ Premium only' : ' | Gratis'); }
-            else { info.textContent = 'Model: GPT-4 (ChatEverywhere) | Gratis'; }
-        }
-        
-        async function saveAI(e) {
-            e.preventDefault();
-            var data = { name: document.getElementById('aiName').value, avatar_url: document.getElementById('aiAvatar').value, description: document.getElementById('aiDesc').value, system_prompt: document.getElementById('aiPrompt').value, package_id: document.getElementById('aiPackage').value || null, gender: document.getElementById('aiGender').value };
-            var editId = document.getElementById('editAIId').value;
-            try {
-                if (editId) { await api('/api/user/characters/'+editId, { method:'PUT', body: JSON.stringify(data) }); toast('AI berhasil diupdate! ✅', 'success'); }
-                else { await api('/api/user/characters', { method:'POST', body: JSON.stringify(data) }); toast('AI berhasil dibuat! 🎉', 'success'); }
-                closeCreateAI(); showMyAI();
-            } catch(e) { toast(e.message, 'error'); }
-        }
-        
-        async function editAI(id) {
-            var a = ais.find(function(x) { return x.id === id; }); if (!a) return;
-            try {
-                var d = await api('/api/user/packages'); allPackages = d.packages || [];
-                var sel = document.getElementById('aiPackage');
-                sel.innerHTML = '<option value="">Default (ChatEverywhere - GPT-4)</option>' + allPackages.map(function(p) { return '<option value="'+p.id+'">'+p.name+(p.is_premium?' ⭐Premium':' Free')+'</option>'; }).join('');
-                var myAIs = await api('/api/user/characters'); var count = (myAIs.characters || []).length;
-                var max = user.role === 'premium' ? 15 : (user.role === 'owner' ? 999 : 5);
-                document.getElementById('aiLimit').textContent = 'AI dibuat: ' + count + '/' + max;
-                document.getElementById('editAIId').value = a.id;
-                document.getElementById('createAITitle').textContent = '✏️ Edit AI Karakter';
-                document.getElementById('aiName').value = a.name || '';
-                document.getElementById('aiAvatar').value = a.avatar_url || '🤖';
-                document.getElementById('aiDesc').value = a.description || '';
-                document.getElementById('aiPrompt').value = a.system_prompt || '';
-                document.getElementById('aiPackage').value = a.package_id || '';
-                document.getElementById('aiGender').value = a.gender || 'female';
-                updatePackageInfo();
-                document.getElementById('createAIModal').classList.remove('hidden');
-            } catch(e) { toast(e.message, 'error'); }
-        }
-        
-        async function deleteAI(id) {
-            if (!confirm('Hapus AI ini? Chat history juga akan dihapus.')) return;
-            try { await api('/api/user/characters/'+id, { method:'DELETE' }); if (ai && ai.id === id) { ai = null; document.getElementById('msgs').innerHTML = '<div class="welcome"><span>💬</span><h2>Select an AI</h2></div>'; } toast('AI dihapus!', 'success'); showMyAI(); } catch(e) { toast(e.message, 'error'); }
-        }
-        
-        // ==================== PASSWORD & GENDER ====================
         function showPassModal() { document.getElementById('passModal').classList.remove('hidden'); document.getElementById('currPass').focus(); }
         function closePassModal() { document.getElementById('passModal').classList.add('hidden'); document.getElementById('currPass').value=''; document.getElementById('newPass').value=''; document.getElementById('confPass').value=''; }
         async function changePassword() { var c = document.getElementById('currPass').value, n = document.getElementById('newPass').value, f = document.getElementById('confPass').value; if (!c||!n||!f) { toast('All fields required','error'); return; } if (n.length<6) { toast('Min 6 chars','error'); return; } if (n!==f) { toast('Not match','error'); return; } try { await api('/api/auth/password', { method:'PUT', body: JSON.stringify({ currentPassword: c, newPassword: n }) }); closePassModal(); toast('Changed!','success'); } catch(e) { toast(e.message,'error'); } }
+        
         function showGenderModal() { document.getElementById('genderModal').classList.remove('hidden'); }
         function closeGenderModal() { document.getElementById('genderModal').classList.add('hidden'); }
         async function changeGender() { var g = document.getElementById('userGender').value; try { await api('/api/auth/gender', { method:'PUT', body: JSON.stringify({ gender: g }) }); user.gender = g; closeGenderModal(); toast('Updated!','success'); } catch(e) { toast(e.message,'error'); } }
+        
         async function clearHistory() { if (!chatId) return; if (!confirm('Clear chat history?')) return; await api('/api/chats/'+chatId+'/history', { method:'DELETE' }); document.getElementById('msgs').innerHTML = ''; relLevel = 0; updRelUI(); toast('Cleared','success'); }
-        async function logout() { localStorage.removeItem('lc'); sessionStorage.clear(); try { await api('/api/auth/logout', { method:'POST' }); } catch(e) {} location.replace('/'); }
+        async function logout() { 
+            localStorage.removeItem('lc'); 
+            sessionStorage.clear();
+            try { await api('/api/auth/logout', { method:'POST' }); } catch(e) {} 
+            location.replace('/'); 
+        }
     </script>
 </body>
 </html>
