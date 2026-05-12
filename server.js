@@ -24,12 +24,12 @@ const PORT = process.env.PORT || 3000;
 const supabase = createClient(config.supabase_url, config.supabase_anon_key);
 
 // ============================================
-// MIDDLEWARE SETUP
+// MIDDLEWARE SETUP (URUTAN PENTING!)
 // ============================================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// OG Image & Social Media Scrapers
+// 1. OG Image & Social Media Scrapers (tidak butuh session)
 app.use((req, res, next) => {
     const ua = (req.get('user-agent') || '').toLowerCase();
     const scrapers = [
@@ -48,7 +48,20 @@ app.use((req, res, next) => {
     next();
 });
 
-// Auto-logout middleware: kick user if banned or deleted
+// 2. SESSION - HARUS SEBELUM auto-logout middleware!
+app.use(session({
+    secret: config.session_secret || 'fallback-secret-change-me-please',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari
+        sameSite: 'lax'
+    }
+}));
+
+// 3. Auto-logout middleware: kick user if banned or deleted (SETELAH session)
 app.use(async (req, res, next) => {
     if (req.session && req.session.userId) {
         try {
@@ -57,12 +70,12 @@ app.use(async (req, res, next) => {
                 .select('id, is_banned')
                 .eq('id', req.session.userId)
                 .single();
-
+            
             // User dihapus atau di-ban → hapus session
             if (!user || user.is_banned) {
                 req.session.destroy(() => {
                     if (req.path.startsWith('/api/')) {
-                        return res.status(401).json({ error: 'Session expired or account banned' });
+                        return res.status(401).json({ error: 'Account banned or deleted' });
                     }
                 });
                 if (!req.path.startsWith('/api/')) {
@@ -71,7 +84,7 @@ app.use(async (req, res, next) => {
                 return;
             }
         } catch(e) {
-            // Supabase error, biarin aja (jangan kick user karena network issue)
+            // Network error, jangan kick user
         }
     }
     next();
@@ -99,19 +112,6 @@ app.get('/og-image.png', (req, res) => {
         <text x="600" y="477" text-anchor="middle" fill="white" font-size="24" font-family="sans-serif" font-weight="bold">Start Chatting 💬</text>
     </svg>`);
 });
-
-// Session - 7 hari persistent
-app.use(session({
-    secret: config.session_secret || 'fallback-secret-change-me-please',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari
-        sameSite: 'lax'
-    }
-}));
 
 // ============================================
 // SERVE HTML FILES
@@ -192,7 +192,7 @@ async function sendOTPEmail(email, otp) {
             console.log('❌ OTP not sent: Resend API key or sender email not configured');
             return;
         }
-
+        
         await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
@@ -286,20 +286,20 @@ async function callRyuuAPI(systemPrompt, historyMessages, userMessage, apiKey, m
     let contextHistory = '';
     if (historyMessages && historyMessages.length > 0) {
         const recentHistory = historyMessages.slice(-6);
-        contextHistory = recentHistory.map(m =>
+        contextHistory = recentHistory.map(m => 
             `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`
         ).join('\n');
     }
-
-    const textWithContext = contextHistory
-        ? `${contextHistory}\nUser: ${userMessage}`
+    
+    const textWithContext = contextHistory 
+        ? `${contextHistory}\nUser: ${userMessage}` 
         : userMessage;
-
+    
     console.log(`📤 Ryuu API:`);
     console.log(`   Model: ${modelName}`);
     console.log(`   Prompt length: ${systemPrompt.length} chars`);
     console.log(`   Text length: ${textWithContext.length} chars`);
-
+    
     const response = await fetch('https://api.ryuu-dev.my.id/ai/gemini', {
         method: 'POST',
         headers: {
@@ -312,37 +312,37 @@ async function callRyuuAPI(systemPrompt, historyMessages, userMessage, apiKey, m
             model: modelName || 'gemini-2.5-flash'
         })
     });
-
+    
     if (!response.ok) {
         const err = await response.text();
         throw new Error(`Ryuu ${response.status}: ${err.substring(0, 200)}`);
     }
-
+    
     const data = await response.json();
     console.log('📦 Ryuu response:', JSON.stringify(data).substring(0, 200));
-
+    
     // Ryuu API specific: { success: true, result: { response: "..." } }
     if (data.result?.response) return data.result.response;
     if (data.result?.text) return data.result.text;
     if (data.result?.message) return data.result.message;
-
+    
     // Generic fallbacks
     if (data.response) return data.response;
     if (data.text) return data.text;
     if (data.message) return data.message;
     if (data.candidates?.[0]?.content?.parts?.[0]?.text) return data.candidates[0].content.parts[0].text;
     if (typeof data === 'string') return data;
-
+    
     const firstValue = Object.values(data).find(v => typeof v === 'string');
     if (firstValue) return firstValue;
-
+    
     return JSON.stringify(data);
 }
 
 // ChatEverywhere API
 async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
     const messages = [{ role: 'system', content: systemPrompt }];
-
+    
     if (historyMessages && historyMessages.length > 0) {
         for (const msg of historyMessages) {
             messages.push({
@@ -351,11 +351,11 @@ async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
             });
         }
     }
-
+    
     messages.push({ role: 'user', content: userMessage });
-
+    
     console.log(`📝 ChatEverywhere: ${messages.length} messages`);
-
+    
     const response = await fetch('https://chateverywhere.app/api/chat/', {
         method: 'POST',
         headers: {
@@ -377,20 +377,20 @@ async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
             temperature: 0.55
         })
     });
-
+    
     if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ ChatEverywhere error:', response.status, errorText.substring(0, 200));
         throw new Error(`ChatEverywhere Status ${response.status}`);
     }
-
+    
     const contentType = response.headers.get('content-type') || '';
-
+    
     if (contentType.includes('application/json')) {
         try {
             const data = await response.json();
             console.log('📦 ChatEverywhere response keys:', Object.keys(data));
-
+            
             if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
             if (data.response) return data.response;
             if (data.result) return data.result;
@@ -401,13 +401,13 @@ async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
             console.error('❌ ChatEverywhere JSON parse error:', parseError.message);
         }
     }
-
+    
     const text = await response.text();
     if (text && text.trim()) {
         console.log('📝 ChatEverywhere plain text:', text.substring(0, 100));
         return text;
     }
-
+    
     throw new Error('ChatEverywhere returned empty response');
 }
 
@@ -417,7 +417,7 @@ async function callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey)
         { role: 'user', parts: [{ text: systemPrompt }] },
         { role: 'model', parts: [{ text: 'Understood. I will follow these instructions.' }] }
     ];
-
+    
     if (historyMessages && historyMessages.length > 0) {
         for (const msg of historyMessages) {
             contents.push({
@@ -426,13 +426,13 @@ async function callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey)
             });
         }
     }
-
+    
     contents.push({ role: 'user', parts: [{ text: userMessage }] });
-
+    
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
             console.log(`📝 Gemini attempt ${attempt}: ${contents.length} contents`);
-
+            
             const response = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`,
                 {
@@ -449,55 +449,55 @@ async function callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey)
                     })
                 }
             );
-
+            
             if (response.status === 429) {
                 const errorData = await response.json().catch(() => ({}));
                 const isQuotaExceeded = errorData?.error?.message?.includes('quota');
-
+                
                 if (isQuotaExceeded) {
                     console.error('❌ Gemini quota exceeded');
                     throw new Error('Gemini quota exceeded - try again later');
                 }
-
+                
                 const waitTime = attempt * 3000 + Math.random() * 2000;
                 console.log(`⚠️ Rate limited, waiting ${Math.round(waitTime/1000)}s...`);
                 await new Promise(r => setTimeout(r, waitTime));
                 continue;
             }
-
+            
             if (!response.ok) {
                 const errText = await response.text();
                 console.error(`❌ Gemini error ${response.status}:`, errText.substring(0, 200));
-
+                
                 if (attempt < 3) { await new Promise(r => setTimeout(r, 2000)); continue; }
                 throw new Error(`Gemini Status ${response.status}`);
             }
-
+            
             const data = await response.json();
-
+            
             if (data.error) {
                 console.error('❌ Gemini API error:', data.error.message);
                 throw new Error(data.error.message || 'Gemini API error');
             }
-
+            
             if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
                 return data.candidates[0].content.parts[0].text;
             }
-
+            
             if (data.candidates?.[0]?.finishReason === 'SAFETY') {
                 throw new Error('Response blocked by safety filter');
             }
-
+            
             console.log('⚠️ Unexpected Gemini response format');
             return 'I apologize, but I could not generate a proper response. Please try again.';
-
+            
         } catch (e) {
             if (attempt === 3 || e.message?.includes('quota')) throw e;
             console.log(`🔄 Gemini retry ${attempt}/3:`, e.message);
             await new Promise(r => setTimeout(r, 2000));
         }
     }
-
+    
     throw new Error('Gemini failed after 3 retries');
 }
 
@@ -542,7 +542,7 @@ async function callNeosantara(systemPrompt, historyMessages, userMessage, apiKey
 // Generic Custom URL
 async function callGenericURL(url, systemPrompt, historyMessages, userMessage, apiKey) {
     const messages = [{ role: 'system', content: systemPrompt }];
-
+    
     if (historyMessages && historyMessages.length > 0) {
         for (const msg of historyMessages) {
             messages.push({
@@ -551,30 +551,30 @@ async function callGenericURL(url, systemPrompt, historyMessages, userMessage, a
             });
         }
     }
-
+    
     messages.push({ role: 'user', content: userMessage });
-
+    
     const fullPrompt = systemPrompt + '\n\n' +
         (historyMessages || []).map(m =>
             `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`
         ).join('\n') +
         '\nUser: ' + userMessage + '\nAssistant:';
-
+    
     const headers = {
         'Content-Type': 'application/json',
         'Accept': '*/*',
         'User-Agent': 'Mozilla/5.0'
     };
-
+    
     if (apiKey) { headers['Authorization'] = `Bearer ${apiKey}`; }
-
+    
     try {
         console.log(`📤 POST to custom: ${url}`);
         const response = await fetch(url, {
             method: 'POST', headers,
             body: JSON.stringify({ messages, prompt: systemPrompt, text: fullPrompt, message: userMessage, model: 'gpt-3.5-turbo' })
         });
-
+        
         if (response.ok) {
             const contentType = response.headers.get('content-type') || '';
             if (contentType.includes('application/json')) {
@@ -591,10 +591,10 @@ async function callGenericURL(url, systemPrompt, historyMessages, userMessage, a
         }
         console.log(`⚠️ Custom POST failed with ${response.status}`);
     } catch (e) { console.log(`⚠️ Custom POST error: ${e.message}`); }
-
+    
     const getResponse = await fetch(`${url}?text=${encodeURIComponent(fullPrompt)}`);
     if (!getResponse.ok) throw new Error(`GET Status ${getResponse.status}`);
-
+    
     const contentType = getResponse.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
         const data = await getResponse.json();
@@ -651,7 +651,7 @@ async function callAI(systemPrompt, historyMessages, userMessage, characterEndpo
             throw error;
         }
     }
-
+    
     // RYUU API PATH
     if (endpoint && endpoint.includes('ryuu')) {
         const key = apiKey || (endpoint.includes(':') ? endpoint.split(':')[1] : null);
@@ -660,23 +660,23 @@ async function callAI(systemPrompt, historyMessages, userMessage, characterEndpo
             console.log('🤖 Calling: Ryuu API...');
             const modelName = charModelName || 'gemini-2.5-flash';
             const result = await callRyuuAPI(systemPrompt, historyMessages, userMessage, key, modelName);
-            if (result && result.trim()) {
-                console.log('✅ Success: Ryuu');
-                return { response: result.trim(), source: 'Ryuu Gemini' };
+            if (result && result.trim()) { 
+                console.log('✅ Success: Ryuu'); 
+                return { response: result.trim(), source: 'Ryuu Gemini' }; 
             }
         } catch (error) {
             console.log('❌ Ryuu failed:', error.message);
-            try {
+            try { 
                 console.log('🔄 Falling back to ChatEverywhere...');
-                const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage);
-                if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere (fallback)' };
+                const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage); 
+                if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; 
             } catch(fb) {
                 console.log('❌ Fallback also failed:', fb.message);
             }
             throw error;
         }
     }
-
+    
     // CHATEVERYWHERE PATH
     if (!endpoint || endpoint === 'chateverywhere' || endpoint.includes('chateverywhere')) {
         try {
@@ -691,20 +691,20 @@ async function callAI(systemPrompt, historyMessages, userMessage, characterEndpo
             throw error;
         }
     }
-
+    
     // CUSTOM ENDPOINT PATH
     console.log(`🤖 Trying custom: ${endpoint}...`);
     try {
         const result = await callGenericURL(endpoint, systemPrompt, historyMessages, userMessage, apiKey);
         if (result && result.trim()) { console.log('✅ Success: Custom'); return { response: result.trim(), source: 'Custom' }; }
     } catch (error) { console.log('❌ Custom failed:', error.message); }
-
+    
     // Final fallback
     try {
         const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage);
         if (result && result.trim()) { console.log('✅ Success: ChatEverywhere (final)'); return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; }
     } catch (error) { console.log('❌ Final fallback failed:', error.message); }
-
+    
     throw new Error('All AI endpoints failed. Please try again later.');
 }
 
@@ -713,7 +713,7 @@ async function callAI(systemPrompt, historyMessages, userMessage, characterEndpo
 // ============================================
 function buildMoodPrompt(mood, relationshipLevel, characterName, userName, charGender, userGender, userRole) {
     let genderPrompt = '';
-
+    
     if (charGender === 'female' && userGender === 'male') {
         genderPrompt = `\n💕 ROMANTIC MODE: You are a FEMALE character talking to a MALE user. You CAN be romantic, call him "sayang", "baby", "cayang". Natural attraction.`;
     } else if (charGender === 'female' && userGender === 'female') {
@@ -750,22 +750,22 @@ function buildMoodPrompt(mood, relationshipLevel, characterName, userName, charG
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { username, password, gender, email } = req.body;
-
+        
         if (!username || !password) {
             return res.status(400).json({ error: 'Username and password are required' });
         }
-
+        
         if (username.length < 3) {
             return res.status(400).json({ error: 'Username must be at least 3 characters' });
         }
-
+        
         if (password.length < 6) {
             return res.status(400).json({ error: 'Password must be at least 6 characters' });
         }
 
         const { data: existingUser } = await supabase.from('users').select('id').eq('username', username).single();
         if (existingUser) return res.status(400).json({ error: 'Username already taken' });
-
+        
         if (email) {
             const { data: existingEmail } = await supabase.from('users').select('id').eq('email', email).single();
             if (existingEmail) return res.status(400).json({ error: 'Email already registered' });
@@ -773,7 +773,7 @@ app.post('/api/auth/register', async (req, res) => {
 
         const passwordHash = await passwordUtils.hash(password);
         const userEmail = email || username;
-
+        
         const { data: newUser, error } = await supabase
             .from('users')
             .insert({
@@ -789,7 +789,7 @@ app.post('/api/auth/register', async (req, res) => {
             })
             .select()
             .single();
-
+        
         if (error) throw error;
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -799,7 +799,7 @@ app.post('/api/auth/register', async (req, res) => {
             otp: otp,
             expires_at: new Date(Date.now() + 10 * 60000).toISOString()
         });
-
+        
         sendOTPEmail(userEmail, otp).catch(e => console.log('OTP send failed:', e.message));
 
         await supabase.from('logs').insert({
@@ -824,7 +824,7 @@ app.post('/api/auth/verify-otp', async (req, res) => {
     try {
         const { email, otp } = req.body;
         if (!email || !otp) return res.status(400).json({ error: 'Email and OTP required' });
-
+        
         const { data: verification } = await supabase
             .from('email_verifications')
             .select('*')
@@ -835,12 +835,12 @@ app.post('/api/auth/verify-otp', async (req, res) => {
             .order('created_at', { ascending: false })
             .limit(1)
             .single();
-
+        
         if (!verification) return res.status(400).json({ error: 'Invalid or expired OTP' });
-
+        
         await supabase.from('email_verifications').update({ is_used: true }).eq('id', verification.id);
         await supabase.from('users').update({ verified: true }).eq('id', verification.user_id);
-
+        
         res.json({ success: true, message: 'Email verified! You can now login.' });
     } catch(e) { res.status(500).json({ error: 'Verification failed' }); }
 });
@@ -849,20 +849,20 @@ app.post('/api/auth/resend-otp', async (req, res) => {
     try {
         const { email } = req.body;
         if (!email) return res.status(400).json({ error: 'Email required' });
-
+        
         const { data: user } = await supabase.from('users').select('id, verified').or(`email.eq.${email},username.eq.${email}`).single();
         if (!user) return res.status(404).json({ error: 'User not found' });
         if (user.verified) return res.status(400).json({ error: 'Already verified' });
-
+        
         const userEmail = email.includes('@') ? email : email + '@unknown.com';
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         await supabase.from('email_verifications').insert({
             user_id: user.id, email: userEmail, otp,
             expires_at: new Date(Date.now() + 10 * 60000).toISOString()
         });
-
+        
         sendOTPEmail(userEmail, otp).catch(e => console.log('Resend OTP failed:', e.message));
-
+        
         res.json({ success: true, message: 'OTP resent!' });
     } catch(e) { res.status(500).json({ error: 'Failed to resend OTP' }); }
 });
@@ -870,7 +870,7 @@ app.post('/api/auth/resend-otp', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-
+        
         if (!username || !password) {
             return res.status(400).json({ error: 'Username and password are required' });
         }
@@ -880,20 +880,20 @@ app.post('/api/auth/login', async (req, res) => {
             .select('*')
             .or(`username.eq.${username},email.eq.${username}`)
             .single();
-
+        
         if (!user) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
-
+        
         if (user.is_banned) {
             return res.status(403).json({ error: 'Account is banned' });
         }
-
+        
         if (user.verified === false) {
-            return res.status(403).json({
-                error: 'Email not verified. Please check your inbox.',
-                requireOTP: true,
-                email: user.email || user.username
+            return res.status(403).json({ 
+                error: 'Email not verified. Please check your inbox.', 
+                requireOTP: true, 
+                email: user.email || user.username 
             });
         }
 
@@ -984,21 +984,21 @@ app.put('/api/auth/password', requireAuth, async (req, res) => {
         const { currentPassword, newPassword } = req.body;
         if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Current and new password are required' });
         if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
-
+        
         const { data: user } = await supabase.from('users').select('password_hash').eq('id', req.session.userId).single();
         if (!user) return res.status(404).json({ error: 'User not found' });
-
+        
         const valid = await passwordUtils.verify(currentPassword, user.password_hash);
         if (!valid) return res.status(401).json({ error: 'Current password is wrong' });
-
+        
         const newHash = await passwordUtils.hash(newPassword);
         await supabase.from('users').update({ password_hash: newHash }).eq('id', req.session.userId);
-
+        
         await supabase.from('logs').insert({
             user_id: req.session.userId, action: 'password_changed',
             details: { message: 'User changed their password' }, ip_address: req.ip
         });
-
+        
         res.json({ success: true, message: 'Password changed successfully' });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1038,7 +1038,7 @@ app.get('/api/characters', requireAuth, async (req, res) => {
         if (req.session.userRole === 'owner') query = query.in('status', ['online', 'active', 'maintenance']);
         else if (req.session.userRole === 'premium') query = query.in('status', ['online', 'active']).in('visibility', ['public', 'all', 'premium-only']);
         else query = query.in('status', ['online', 'active']).in('visibility', ['public', 'all']);
-
+        
         const { data: characters, error } = await query.order('name');
         if (error) throw error;
 
@@ -1151,12 +1151,12 @@ app.put('/api/chats/:chatId/mood', requireAuth, async (req, res) => {
         const { mood } = req.body;
         const validMoods = ['happy', 'neutral', 'annoyed', 'clingy', 'sleepy', 'caring', 'adult'];
         if (!validMoods.includes(mood)) return res.status(400).json({ error: 'Invalid mood' });
-
+        
         // Cek adult mode: premium/owner only
         if (mood === 'adult' && req.session.userRole !== 'premium' && req.session.userRole !== 'owner') {
             return res.status(403).json({ error: 'Adult mode requires Premium/Owner' });
         }
-
+        
         // Cek adult mode: gender harus beda (male <> female)
         if (mood === 'adult') {
             const { data: chat } = await supabase
@@ -1165,21 +1165,21 @@ app.put('/api/chats/:chatId/mood', requireAuth, async (req, res) => {
                 .eq('id', req.params.chatId)
                 .eq('user_id', req.session.userId)
                 .single();
-
+            
             if (!chat) return res.status(404).json({ error: 'Chat not found' });
-
+            
             const charGender = chat.characters?.gender || 'unknown';
             const userGender = req.session.userGender || 'unknown';
-
+            
             if (charGender === userGender) {
-                return res.status(400).json({
+                return res.status(400).json({ 
                     error: `Adult mood tidak bisa dipakai ke sesama gender (${charGender === 'male' ? '♂ Male' : '♀ Female'} ↔ ${userGender === 'male' ? '♂ Male' : '♀ Female'})`,
                     charGender,
                     userGender
                 });
             }
         }
-
+        
         await supabase.from('chats').update({ mood }).eq('id', req.params.chatId).eq('user_id', req.session.userId);
         res.json({ success: true, mood });
     } catch (error) { res.status(500).json({ error: 'Failed to update mood' }); }
@@ -1225,15 +1225,15 @@ app.delete('/api/owner/users/:userId', requireRole('owner'), async (req, res) =>
         if (req.params.userId === req.session.userId) {
             return res.status(400).json({ error: 'Cannot delete yourself' });
         }
-
+        
         await supabase.from('email_verifications').delete().eq('user_id', req.params.userId);
         await supabase.from('messages').delete().eq('user_id', req.params.userId);
         await supabase.from('chats').delete().eq('user_id', req.params.userId);
         await supabase.from('logs').delete().eq('user_id', req.params.userId);
-
+        
         const { error } = await supabase.from('users').delete().eq('id', req.params.userId);
         if (error) throw error;
-
+        
         res.json({ success: true, message: 'User deleted' });
     } catch (error) {
         res.status(500).json({ error: error.message });
