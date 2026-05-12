@@ -1,11 +1,13 @@
 // ============================================
-// AI CHAT BACKEND SERVER - FINAL WITH CONTEXT + GENDER + ADULT + NEOSANTARA + EMAIL OTP
+// AI CHAT BACKEND SERVER - FINAL WITH CONTEXT + GENDER + ADULT + NEOSANTARA + RYUU + EMAIL OTP
 // Default: ChatEverywhere + Context History
 // Gemini: with retry & fallback
 // Neosantara: OpenAI-compatible API
+// Ryuu: Gemini API with text+prompt structure
 // Gender-based Prompt + Adult Mood System
 // Email OTP Verification via Resend
 // Login: username OR email
+// Security: Public settings filtered, Owner-only full settings
 // ============================================
 
 const express = require('express');
@@ -248,6 +250,64 @@ async function sendOTPEmail(email, otp) {
 // ============================================
 // AI CALLERS
 // ============================================
+
+// Ryuu API (Gemini dengan struktur text + prompt terpisah)
+async function callRyuuAPI(systemPrompt, historyMessages, userMessage, apiKey, modelName) {
+    let contextHistory = '';
+    if (historyMessages && historyMessages.length > 0) {
+        const recentHistory = historyMessages.slice(-6);
+        contextHistory = recentHistory.map(m => 
+            `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`
+        ).join('\n');
+    }
+    
+    const textWithContext = contextHistory 
+        ? `${contextHistory}\nUser: ${userMessage}` 
+        : userMessage;
+    
+    console.log(`📤 Ryuu API:`);
+    console.log(`   Model: ${modelName}`);
+    console.log(`   Prompt length: ${systemPrompt.length} chars`);
+    console.log(`   Text length: ${textWithContext.length} chars`);
+    
+    const response = await fetch('https://api.ryuu-dev.my.id/ai/gemini', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-RYUU-APIKEY': apiKey
+        },
+        body: JSON.stringify({
+            text: textWithContext,
+            prompt: systemPrompt,
+            model: modelName || 'gemini-2.5-flash'
+        })
+    });
+    
+    if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Ryuu ${response.status}: ${err.substring(0, 200)}`);
+    }
+    
+    const data = await response.json();
+    console.log('📦 Ryuu response:', JSON.stringify(data).substring(0, 200));
+    
+    // Ryuu API specific: { success: true, result: { response: "..." } }
+    if (data.result?.response) return data.result.response;
+    if (data.result?.text) return data.result.text;
+    if (data.result?.message) return data.result.message;
+    
+    // Generic fallbacks
+    if (data.response) return data.response;
+    if (data.text) return data.text;
+    if (data.message) return data.message;
+    if (data.candidates?.[0]?.content?.parts?.[0]?.text) return data.candidates[0].content.parts[0].text;
+    if (typeof data === 'string') return data;
+    
+    const firstValue = Object.values(data).find(v => typeof v === 'string');
+    if (firstValue) return firstValue;
+    
+    return JSON.stringify(data);
+}
 
 // ChatEverywhere API
 async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
@@ -565,6 +625,31 @@ async function callAI(systemPrompt, historyMessages, userMessage, characterEndpo
         }
     }
     
+    // RYUU API PATH
+    if (endpoint && endpoint.includes('ryuu')) {
+        const key = apiKey || (endpoint.includes(':') ? endpoint.split(':')[1] : null);
+        if (!key) throw new Error('Ryuu API key required (set in package api_key or endpoint as ryuu:APIKEY)');
+        try {
+            console.log('🤖 Calling: Ryuu API...');
+            const modelName = charModelName || 'gemini-2.5-flash';
+            const result = await callRyuuAPI(systemPrompt, historyMessages, userMessage, key, modelName);
+            if (result && result.trim()) { 
+                console.log('✅ Success: Ryuu'); 
+                return { response: result.trim(), source: 'Ryuu Gemini' }; 
+            }
+        } catch (error) {
+            console.log('❌ Ryuu failed:', error.message);
+            try { 
+                console.log('🔄 Falling back to ChatEverywhere...');
+                const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage); 
+                if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; 
+            } catch(fb) {
+                console.log('❌ Fallback also failed:', fb.message);
+            }
+            throw error;
+        }
+    }
+    
     // CHATEVERYWHERE PATH
     if (!endpoint || endpoint === 'chateverywhere' || endpoint.includes('chateverywhere')) {
         try {
@@ -857,14 +942,20 @@ app.get('/api/auth/me', async (req, res) => {
     } catch (error) { res.status(500).json({ error: 'Failed to get user data' }); }
 });
 
-// Get settings
+// Get public settings (FILTERED - no API keys)
 app.get('/api/settings', async (req, res) => {
+    const { data } = await supabase.from('settings').select('qris_url, owner_whatsapp').eq('id', 1).single();
+    res.json({ settings: data });
+});
+
+// Get full settings (OWNER ONLY)
+app.get('/api/owner/settings', requireRole('owner'), async (req, res) => {
     const { data } = await supabase.from('settings').select('*').eq('id', 1).single();
     res.json({ settings: data });
 });
 
 // Update settings (owner only)
-app.put('/api/settings', requireRole('owner'), async (req, res) => {
+app.put('/api/owner/settings', requireRole('owner'), async (req, res) => {
     await supabase.from('settings').update(req.body).eq('id', 1);
     res.json({ success: true });
 });
@@ -1122,7 +1213,8 @@ if (process.env.NODE_ENV !== 'production') {
         console.log(`📱 http://localhost:${PORT}`);
         console.log(`📧 Email OTP Verification: ON`);
         console.log(`🔑 Login: username OR email`);
-        console.log(`🤖 ChatEverywhere + Gemini + Neosantara + Custom`);
+        console.log(`🔒 Public settings: filtered (no API keys)`);
+        console.log(`🤖 ChatEverywhere + Gemini + Neosantara + Ryuu + Custom`);
         console.log('============================================');
     });
 }
