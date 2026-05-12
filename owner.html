@@ -94,6 +94,14 @@
         .hidden { display:none !important; }
         .text-c { text-align:center; color:var(--muted); }
         
+        /* Access Denied */
+        .access-denied {
+            display:flex;align-items:center;justify-content:center;
+            height:100vh;color:#ef4444;font-family:sans-serif;font-size:18px;
+            flex-direction:column;gap:12px;text-align:center;padding:20px;
+        }
+        .access-denied .icon { font-size:48px; }
+        
         @media (max-width:768px) {
             .dash { flex-direction:column; }
             .dash-sb { width:100%; min-width:auto; height:auto; padding:10px; position:relative; }
@@ -107,7 +115,7 @@
     </style>
 </head>
 <body>
-    <div class="dash">
+    <div class="dash" id="dashContent">
         <aside class="dash-sb">
             <div class="dash-logo">👑 Admin</div>
             <nav class="dash-nav">
@@ -206,6 +214,18 @@
                     </div>
                 </div>
                 
+                <!-- WhatsApp Owner Settings -->
+                <div class="table-wrap" style="margin-top:20px;">
+                    <div class="table-head"><span>📱 WhatsApp Owner</span></div>
+                    <div style="padding:20px;">
+                        <div class="form-g">
+                            <label>Nomor WhatsApp (628xxx, tanpa +, tanpa spasi)</label>
+                            <input type="text" id="ownerWhatsapp" placeholder="6281234567890">
+                        </div>
+                        <p style="font-size:11px;color:var(--muted);margin-top:4px;">Nomor ini akan digunakan untuk tombol "Beli Premium" di halaman login</p>
+                    </div>
+                </div>
+                
                 <button class="btn btn-p" onclick="saveSettings()" style="margin-top:16px;">💾 Save All Settings</button>
             </div>
             
@@ -282,36 +302,43 @@
 
     <script>
         // ==================== SECURITY: AUTH CHECK ====================
-        (async function() {
-            try {
-                var d = await (await fetch('/api/auth/me', { headers: { 'Content-Type': 'application/json' } })).json();
-                if (!d.user || d.user.role !== 'owner') {
-                    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#ef4444;font-family:sans-serif;font-size:18px;">⛔ Access Denied</div>';
-                    setTimeout(function() { location.replace('/'); }, 1500);
-                    return;
-                }
-            } catch(e) {
-                document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#ef4444;font-family:sans-serif;font-size:18px;">⛔ Access Denied</div>';
-                setTimeout(function() { location.replace('/'); }, 1500);
-                return;
-            }
-            
+        (function() {
             // Prevent back button cache
             history.pushState(null, '', location.href);
             window.addEventListener('popstate', function() {
                 history.pushState(null, '', location.href);
                 location.replace('/');
             });
-            
-            // Set no-cache headers for all fetch requests
-            var originalFetch = window.fetch;
-            window.fetch = function(url, options) {
-                options = options || {};
-                options.headers = options.headers || {};
-                options.headers['Cache-Control'] = 'no-cache';
-                options.headers['Pragma'] = 'no-cache';
-                return originalFetch(url, options);
-            };
+        })();
+        
+        function forceLogout(msg) {
+            sessionStorage.clear();
+            localStorage.clear();
+            document.getElementById('dashContent').innerHTML = '<div class="access-denied"><span class="icon">⛔</span>'+msg+'<br>Redirecting to login...</div>';
+            setTimeout(function() { location.replace('/'); }, 1500);
+        }
+        
+        // Cek session setiap user balik ke tab
+        document.addEventListener('visibilitychange', async function() {
+            if (document.visibilityState === 'visible') {
+                try {
+                    var d = await api('/api/auth/me');
+                    if (!d.user || d.user.role !== 'owner') { forceLogout('Session expired or access revoked'); }
+                } catch(e) { forceLogout('Session expired'); }
+            }
+        });
+        
+        (async function() {
+            try {
+                var d = await api('/api/auth/me');
+                if (!d.user || d.user.role !== 'owner') {
+                    forceLogout('⛔ Access Denied - Owner only');
+                    return;
+                }
+            } catch(e) {
+                forceLogout('⛔ Access Denied - Please login first');
+                return;
+            }
             
             loadStats(); loadUsers(); loadChars(); loadPkgs(); loadLogs(); loadSettings();
             document.getElementById('charForm').addEventListener('submit', saveChar);
@@ -322,7 +349,12 @@
         async function api(url, opt = {}) {
             var r = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }, ...opt });
             var d = await r.json();
-            if (!r.ok) throw new Error(d.error || 'Error');
+            if (!r.ok) {
+                if (d.error && (d.error.indexOf('Unauthorized') !== -1 || d.error.indexOf('banned') !== -1)) {
+                    forceLogout(d.error);
+                }
+                throw new Error(d.error || 'Error');
+            }
             return d;
         }
         
@@ -394,6 +426,7 @@
                     document.getElementById('qrisUrl').value = d.settings.qris_url || '';
                     document.getElementById('resendApiKey').value = d.settings.resend_api_key || '';
                     document.getElementById('senderEmail').value = d.settings.sender_email || '';
+                    document.getElementById('ownerWhatsapp').value = d.settings.owner_whatsapp || '';
                     var p = document.getElementById('qrisPreview');
                     p.src = d.settings.qris_url || '';
                     p.style.display = d.settings.qris_url ? 'block' : 'none';
@@ -405,7 +438,8 @@
             await api('/api/settings', { method:'PUT', body: JSON.stringify({
                 qris_url: document.getElementById('qrisUrl').value,
                 resend_api_key: document.getElementById('resendApiKey').value,
-                sender_email: document.getElementById('senderEmail').value
+                sender_email: document.getElementById('senderEmail').value,
+                owner_whatsapp: document.getElementById('ownerWhatsapp').value
             }) });
             document.getElementById('qrisPreview').src = document.getElementById('qrisUrl').value;
             document.getElementById('qrisPreview').style.display = document.getElementById('qrisUrl').value ? 'block' : 'none';
@@ -524,9 +558,9 @@
         function toast(m, t) { t = t || 'ok'; var e = document.createElement('div'); e.className = 'toast ' + t; e.textContent = m; document.body.appendChild(e); setTimeout(function() { e.remove(); }, 2500); }
         
         async function logout() {
-            await api('/api/auth/logout',{method:'POST'});
             sessionStorage.clear();
             localStorage.clear();
+            try { await api('/api/auth/logout',{method:'POST'}); } catch(e) {}
             location.replace('/');
         }
     </script>

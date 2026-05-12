@@ -106,6 +106,14 @@
         @keyframes fadeUp { from{opacity:0;transform:translateX(-50%) translateY(8px);} to{opacity:1;transform:translateX(-50%) translateY(0);} }
         .hidden { display:none !important; }
         
+        /* Access Denied */
+        .access-denied {
+            display:flex;align-items:center;justify-content:center;
+            height:100vh;color:#ef4444;font-family:sans-serif;font-size:18px;
+            flex-direction:column;gap:12px;text-align:center;padding:20px;
+        }
+        .access-denied .icon { font-size:48px; }
+        
         @media (max-width:768px) {
             .sidebar { position:fixed;transform:translateX(-100%); }
             .sidebar.open { transform:translateX(0);box-shadow:4px 0 20px rgba(0,0,0,0.5); }
@@ -115,10 +123,10 @@
 </head>
 <body>
     <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
-    <div class="app">
+    <div class="app" id="appContent">
         <aside class="sidebar" id="sidebar">
             <div class="sb-head">
-                <h3>🤖 AI Characters <button onclick="refreshAIs()" style="background:var(--acc);border:none;color:white;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;">↻</button></h3>
+                <h3> AI Characters <button onclick="refreshAIs()" style="background:var(--acc);border:none;color:white;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;">↻</button></h3>
                 <input type="text" placeholder="Search AI..." oninput="filterAIs(this.value)">
             </div>
             <div class="sb-list" id="aiList"><div style="text-align:center;color:var(--muted);padding:20px;">Loading...</div></div>
@@ -160,7 +168,7 @@
                     </div>
                 </div>
             </header>
-            <div class="msgs" id="msgs"><div class="welcome"><span>💬</span><h2 style="color:var(--text);">Select an AI Character</h2><p>Choose from the sidebar to start chatting</p></div></div>
+            <div class="msgs" id="msgs"><div class="welcome"><span></span><h2 style="color:var(--text);">Select an AI Character</h2><p>Choose from the sidebar to start chatting</p></div></div>
             <div class="limit" id="limit">Messages: --/--</div>
             <div class="inp-area hidden" id="inpArea">
                 <div class="inp-wrap"><textarea id="chatInput" placeholder="Type a message..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg();}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px';"></textarea><button class="snd" id="sndBtn" onclick="sendMsg()">➤</button></div>
@@ -182,9 +190,19 @@
     </div></div>
 
     <script>
+        // ==================== SECURITY: AUTH CHECK ====================
+        (function() {
+            // Prevent back button cache
+            history.pushState(null, '', location.href);
+            window.addEventListener('popstate', function() {
+                history.pushState(null, '', location.href);
+                location.replace('/');
+            });
+        })();
+        
         async function api(url, opt) {
             opt = opt || {};
-            var r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opt });
+            var r = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }, ...opt });
             var d = await r.json();
             if (!r.ok) throw new Error(d.error || 'Error');
             return d;
@@ -198,18 +216,47 @@
         function loadLS() { try { var d = JSON.parse(localStorage.getItem('lc')); if (d && Date.now()-d.t < 864e5) return d; } catch(e) {} return null; }
         function getBadge(v) { if (v === 'private') return '<span class="ai-badge private">🔒 Private</span>'; if (v === 'premium-only') return '<span class="ai-badge premium">⭐ Premium</span>'; return ''; }
         
+        // Cek session setiap user balik ke tab
+        document.addEventListener('visibilitychange', async function() {
+            if (document.visibilityState === 'visible' && user) {
+                try {
+                    var d = await api('/api/auth/me');
+                    if (!d.user) { forceLogout('Session expired'); }
+                } catch(e) { forceLogout('Session expired'); }
+            }
+        });
+        
+        function forceLogout(msg) {
+            localStorage.removeItem('lc');
+            sessionStorage.clear();
+            document.getElementById('appContent').innerHTML = '<div class="access-denied"><span class="icon">⛔</span>'+msg+'<br>Redirecting to login...</div>';
+            setTimeout(function() { location.replace('/'); }, 1500);
+        }
+        
         (async function() {
             try {
-                var d = await api('/api/auth/me'); user = d.user;
+                var d = await api('/api/auth/me');
+                user = d.user;
+                if (!user) {
+                    forceLogout('Access Denied - Please login first');
+                    return;
+                }
+                
                 document.getElementById('uAv').textContent = user.username[0].toUpperCase();
                 document.getElementById('uNm').textContent = user.username;
                 document.getElementById('uRl').textContent = user.role;
                 if (user.role === 'owner') document.getElementById('btnOwner').style.display = 'block';
+                
                 await refreshAIs(); updLimit();
                 var last = loadLS();
-                if (last && last.mid) { var a = ais.find(function(x) { return x.id === last.mid; }); if (a) { mood = last.mood || 'neutral'; relLevel = last.rel || 0; selectAI(a, last.cid); updMoodUI(); updRelUI(); return; } }
+                if (last && last.mid) { 
+                    var a = ais.find(function(x) { return x.id === last.mid; }); 
+                    if (a) { mood = last.mood || 'neutral'; relLevel = last.rel || 0; selectAI(a, last.cid); updMoodUI(); updRelUI(); return; } 
+                }
                 if (ais.length) selectAI(ais[0]);
-            } catch(e) { location.href = '/'; }
+            } catch(e) { 
+                forceLogout('Access Denied - Please login first');
+            }
         })();
         setInterval(refreshAIs, 30000);
         
@@ -250,13 +297,44 @@
         function toggleMood() { document.getElementById('moodDD').classList.toggle('show'); }
         
         async function changeMood(m) {
+            // Cek adult mode: premium/owner only
             if (m === 'adult' && user.role !== 'premium' && user.role !== 'owner') {
                 toast('🔞 Adult mode requires Premium/Owner access', 'error');
                 return;
             }
+            
+            // Cek same-gender sebelum kirim ke backend
+            if (m === 'adult' && ai) {
+                var charGender = ai.gender || 'unknown';
+                var userGender = user.gender || 'unknown';
+                if (charGender === userGender) {
+                    var genderLabel = charGender === 'male' ? '♂ Male' : '♀ Female';
+                    toast('❌ Adult mood tidak bisa dipakai ke sesama gender (' + genderLabel + ' ↔ ' + genderLabel + ')', 'error');
+                    document.getElementById('moodDD').classList.remove('show');
+                    return;
+                }
+            }
+            
+            // Simpan mood sebelumnya untuk rollback
+            var prevMood = mood;
             mood = m;
-            updMoodUI(); document.getElementById('moodDD').classList.remove('show');
-            if (chatId) { try { await api('/api/chats/'+chatId+'/mood', { method:'PUT', body: JSON.stringify({ mood: m }) }); } catch(e) {} }
+            updMoodUI();
+            document.getElementById('moodDD').classList.remove('show');
+            
+            if (chatId) {
+                try {
+                    await api('/api/chats/' + chatId + '/mood', { 
+                        method: 'PUT', 
+                        body: JSON.stringify({ mood: m }) 
+                    });
+                } catch(e) {
+                    // Rollback kalau backend nge-block
+                    mood = prevMood;
+                    updMoodUI();
+                    toast(e.message, 'error');
+                    return;
+                }
+            }
             saveLS();
         }
         
@@ -297,7 +375,12 @@
                 if (d.aiMessage) addBubble('assistant', d.aiMessage.content);
                 if (d.relationshipLevel !== undefined) { relLevel = d.relationshipLevel; updRelUI(); }
                 updLimit(); saveLS();
-            } catch(e) { var t = document.getElementById('typing'); if (t) t.remove(); if (e.message.indexOf('limit') !== -1) document.getElementById('limitModal').classList.remove('hidden'); else toast(e.message, 'error'); }
+            } catch(e) { 
+                var t = document.getElementById('typing'); if (t) t.remove(); 
+                if (e.message.indexOf('limit') !== -1) document.getElementById('limitModal').classList.remove('hidden'); 
+                else if (e.message.indexOf('Unauthorized') !== -1 || e.message.indexOf('banned') !== -1) forceLogout(e.message);
+                else toast(e.message, 'error'); 
+            }
             busy = false; document.getElementById('sndBtn').disabled = false; inp.focus();
         }
         
@@ -312,7 +395,12 @@
         async function changeGender() { var g = document.getElementById('userGender').value; try { await api('/api/auth/gender', { method:'PUT', body: JSON.stringify({ gender: g }) }); user.gender = g; closeGenderModal(); toast('Updated!','success'); } catch(e) { toast(e.message,'error'); } }
         
         async function clearHistory() { if (!chatId) return; if (!confirm('Clear chat history?')) return; await api('/api/chats/'+chatId+'/history', { method:'DELETE' }); document.getElementById('msgs').innerHTML = ''; relLevel = 0; updRelUI(); toast('Cleared','success'); }
-        async function logout() { localStorage.removeItem('lc'); await api('/api/auth/logout', { method:'POST' }); location.href = '/'; }
+        async function logout() { 
+            localStorage.removeItem('lc'); 
+            sessionStorage.clear();
+            try { await api('/api/auth/logout', { method:'POST' }); } catch(e) {} 
+            location.replace('/'); 
+        }
     </script>
 </body>
 </html>

@@ -5,23 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   
   <!-- OPEN GRAPH -->
-  <meta property="og:title" content="c.ai By MikuHost - AI Characters with Personality">
+  <meta property="og:title" content="Cha-Ai By MikuHost - AI Characters with Personality">
   <meta property="og:description" content="Modern AI Chat with WhatsApp-style interface. Chat with Miku and other AI characters, switch moods, and build relationships. Free forever, supported by community.">
   <meta property="og:image" content="https://cdn.aceimg.com/27a9dbe8f.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:url" content="https://ca1-zeta.vercel.app">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="c.ai By MikuHost">
+  <meta property="og:site_name" content="Chat-Ai By MikuHost">
   <meta property="og:locale" content="en_US">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="c.ai By MikuHost">
   <meta name="twitter:description" content="Modern AI Chat with WhatsApp-style interface.">
   <meta name="twitter:image" content="https://cdn.aceimg.com/27a9dbe8f.jpg">
   <meta name="theme-color" content="#0a0a0f">
-  <meta name="description" content="c.ai By MikuHost - Free AI Chat with multiple characters, mood system, and personality. Email verification required.">
+  <meta name="description" content="Chat-Ai By MikuHost - AI Chat with multiple characters, mood system, and personality.">
   
-  <title>c.ai By MikuHost - Free AI Chat</title>
+  <title>Chat-Ai By MikuHost - Free AI Chat</title>
   <style>
     :root {
       --bg: #0a0a0a;
@@ -124,25 +124,60 @@
     .form-panel { display: none; }
     .form-panel.active { display: block; }
 
-    /* FEATURE GUIDE */
-    .feature-guide {
-      margin-top: 14px; text-align: left; padding: 16px 14px;
-      background: var(--glass-bg); border: 1px solid var(--glass-border);
-      border-radius: 16px; backdrop-filter: blur(10px);
+    /* ACTION BUTTONS - Sejajar */
+    .action-buttons {
+      display: flex; gap: 10px; margin-top: 16px;
     }
-    .feature-guide h4 {
-      font-size: 13px; margin-bottom: 10px; color: var(--text);
-      display: flex; align-items: center; gap: 6px;
+    .action-btn {
+      flex: 1; padding: 12px 10px; border-radius: 14px;
+      border: 1px solid var(--glass-border); cursor: pointer;
+      font-size: 13px; font-weight: 600; font-family: inherit;
+      background: var(--glass-bg); color: var(--text);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      transition: all 0.3s; text-align: center; display: flex;
+      align-items: center; justify-content: center; gap: 6px;
     }
-    .feature-guide h4 span { font-size: 18px; }
-    .feature-guide ul {
-      list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px;
+    .action-btn:active { transform: scale(0.96); }
+    .action-btn.premium { border-color: rgba(245, 158, 11, 0.5); color: #fbbf24; }
+    .action-btn.premium:hover { background: rgba(245, 158, 11, 0.1); }
+    .action-btn.feature { border-color: rgba(108, 92, 231, 0.5); color: #a78bfa; }
+    .action-btn.feature:hover { background: rgba(108, 92, 231, 0.1); }
+
+    /* FEATURE MODAL */
+    .feature-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9998;
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
     }
-    .feature-guide ul li {
-      font-size: 11px; color: var(--text-secondary); padding: 6px 10px;
-      background: var(--input-bg); border-radius: 8px; line-height: 1.5;
+    .feature-overlay.show { opacity: 1; pointer-events: auto; }
+    .feature-card {
+      background: var(--card-bg); border: 1px solid var(--glass-border);
+      border-radius: 20px 20px 0 0; padding: 24px 20px 16px;
+      width: 100%; max-width: 420px; max-height: 70vh; overflow-y: auto;
+      transform: translateY(100%); transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
     }
-    .feature-guide ul li strong { color: var(--text); }
+    .feature-overlay.show .feature-card { transform: translateY(0); }
+    .feature-card h4 {
+      font-size: 16px; margin-bottom: 14px; color: var(--text);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .feature-card h4 span { font-size: 22px; }
+    .feature-card ul {
+      list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px;
+    }
+    .feature-card ul li {
+      font-size: 12px; color: var(--text-secondary); padding: 10px 12px;
+      background: var(--input-bg); border-radius: 10px; line-height: 1.5;
+    }
+    .feature-card ul li strong { color: var(--text); }
+    .btn-close-feature {
+      width: 100%; padding: 12px; margin-top: 16px;
+      border-radius: 12px; border: 1px solid var(--glass-border);
+      background: var(--glass-bg); color: var(--text-secondary);
+      font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: all 0.2s;
+    }
+    .btn-close-feature:hover { background: rgba(255,255,255,0.08); color: var(--text); }
 
     /* SUPPORT SECTION */
     .support-section {
@@ -223,6 +258,7 @@
     @media (max-width: 480px) {
       .card { padding: 22px 16px; border-radius: 20px; }
       .logo h1 { font-size: 20px; }
+      .action-btn { font-size: 12px; padding: 11px 8px; }
     }
     @media (max-height: 700px) {
       .banner-top { display: none; }
@@ -284,11 +320,30 @@
           <div class="success-msg" id="reg-success"></div>
         </form>
       </div>
+
+      <!-- ACTION BUTTONS -->
+      <div class="action-buttons">
+        <button class="action-btn feature" onclick="openFeatureModal()">Fitur</button>
+        <button class="action-btn premium" onclick="openWhatsApp()">Beli Premium</button>
+      </div>
     </div>
 
-    <!-- FEATURE GUIDE -->
-    <div class="feature-guide">
-      <h4><span>📋</span> Fitur yang Tersedia</h4>
+    <!-- SUPPORT SECTION -->
+    <div class="support-section">
+      <div class="heart">❤️</div>
+      <h3>Support This Project</h3>
+      <p>API key & server butuh biaya bulanan. Bantu kami tetap hidup! </p>
+      <a href="/qris" class="btn-support"> Support via QRIS</a>
+      <div class="support-links"></div>
+    </div>
+
+    <div class="footer-text">MikuHost</div>
+  </div>
+
+  <!-- FEATURE MODAL -->
+  <div class="feature-overlay" id="featureOverlay" onclick="closeFeatureModal(event)">
+    <div class="feature-card" id="featureCard" onclick="event.stopPropagation()">
+      <h4><span></span> Fitur yang Tersedia</h4>
       <ul>
         <li><strong>🤖 AI Characters</strong> — Pilih dari berbagai karakter AI dengan kepribadian unik</li>
         <li><strong>🎭 Mood System</strong> — Ubah mood AI (Happy, Clingy, Annoyed, Sleepy, Caring, Adult)</li>
@@ -297,18 +352,8 @@
         <li><strong>🔞 Adult Mode</strong> — Khusus Premium/Owner, unlock percakapan tanpa batas</li>
         <li><strong>📧 Email Verification</strong> — Akun aman dengan verifikasi OTP</li>
       </ul>
+      <button class="btn-close-feature" onclick="closeFeatureModal()">Tutup</button>
     </div>
-
-    <!-- SUPPORT SECTION -->
-    <div class="support-section">
-      <div class="heart">❤️</div>
-      <h3>Support This Project</h3>
-      <p>Website ini GRATIS selamanya. API key & server butuh biaya bulanan. Bantu kami tetap hidup! 💜</p>
-      <a href="/qris" class="btn-support">☕ Support via QRIS</a>
-      <div class="support-links"></div>
-    </div>
-
-    <div class="footer-text">MikuHost</div>
   </div>
 
   <div class="banner-bottom">
@@ -331,6 +376,18 @@
   <script>
     var currentTab = 'login';
     var otpEmail = '';
+    var ownerWhatsApp = '6281234567890'; // Default, akan di-override dari settings
+
+    // Ambil nomor WhatsApp dari Supabase settings
+    (async function() {
+      try {
+        var res = await fetch('/api/settings');
+        var data = await res.json();
+        if (data.settings && data.settings.owner_whatsapp) {
+          ownerWhatsApp = data.settings.owner_whatsapp;
+        }
+      } catch(e) {}
+    })();
 
     function switchTab(tab) {
       currentTab = tab;
@@ -348,6 +405,23 @@
         document.getElementById('reg-error').textContent = '';
         document.getElementById('reg-success').textContent = '';
       }
+    }
+
+    function openFeatureModal() {
+      document.getElementById('featureOverlay').classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeFeatureModal(e) {
+      if (e && e.target !== document.getElementById('featureOverlay')) return;
+      document.getElementById('featureOverlay').classList.remove('show');
+      document.body.style.overflow = '';
+    }
+
+    function openWhatsApp() {
+      var message = encodeURIComponent('Halo, saya tertarik untuk beli premium c.ai By MikuHost. Bisa info lebih lanjut?');
+      var waUrl = 'https://wa.me/' + ownerWhatsApp + '?text=' + message;
+      window.open(waUrl, '_blank');
     }
 
     function showToast(message, type) {
@@ -427,7 +501,6 @@
         });
         var data = await res.json();
         
-        // Cek perlu OTP
         if (data.error === 'Email not verified. Please check your inbox.' || data.requireOTP) {
           openOTPModal(data.email || username);
           return;

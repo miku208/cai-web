@@ -4,9 +4,10 @@
 // Gemini: with retry & fallback
 // Neosantara: OpenAI-compatible API
 // Ryuu: Gemini API with text+prompt structure
-// Gender-based Prompt + Adult Mood System
+// Gender-based Prompt + Adult Mood System (same-gender blocked)
 // Email OTP Verification via Resend
 // Login: username OR email
+// Session: 7 days persistent login, auto-kick on ban/delete
 // ============================================
 
 const express = require('express');
@@ -47,6 +48,35 @@ app.use((req, res, next) => {
     next();
 });
 
+// Auto-logout middleware: kick user if banned or deleted
+app.use(async (req, res, next) => {
+    if (req.session && req.session.userId) {
+        try {
+            const { data: user } = await supabase
+                .from('users')
+                .select('id, is_banned')
+                .eq('id', req.session.userId)
+                .single();
+            
+            // User dihapus atau di-ban → hapus session
+            if (!user || user.is_banned) {
+                req.session.destroy(() => {
+                    if (req.path.startsWith('/api/')) {
+                        return res.status(401).json({ error: 'Session expired or account banned' });
+                    }
+                });
+                if (!req.path.startsWith('/api/')) {
+                    return res.redirect('/');
+                }
+                return;
+            }
+        } catch(e) {
+            // Supabase error, biarin aja (jangan kick user karena network issue)
+        }
+    }
+    next();
+});
+
 // OG Image endpoint
 app.get('/og-image.png', (req, res) => {
     res.setHeader('Content-Type', 'image/svg+xml');
@@ -70,15 +100,16 @@ app.get('/og-image.png', (req, res) => {
     </svg>`);
 });
 
-// Session
+// Session - 7 hari persistent
 app.use(session({
-    secret: config.session_secret || 'fallback-secret-change-me-please',
+    secret: config.session_secret || '93729749297',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false,
+        secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari
+        sameSite: 'lax'
     }
 }));
 
@@ -147,7 +178,7 @@ const requireRole = (...roles) => {
 // ============================================
 function getLimit(role) {
     if (role === 'owner') return Infinity;
-    if (role === 'premium') return 100;
+    if (role === 'premium') return 150;
     return 15; // Default user
 }
 
@@ -169,18 +200,75 @@ async function sendOTPEmail(email, otp) {
                 'Authorization': `Bearer ${settings.resend_api_key}`
             },
             body: JSON.stringify({
-                from: `c.ai MikuHost <${settings.sender_email}>`,
+                from: `Chat-Ai <${settings.sender_email}>`,
                 to: email,
-                subject: 'Verify your email - c.ai By MikuHost',
+                subject: 'Verify your email - Chat-Ai By MikuHost',
                 html: `
-                    <div style="font-family:sans-serif;max-width:400px;margin:0 auto;padding:20px;background:#0a0a0f;color:#fff;border-radius:12px;text-align:center;">
-                        <h2 style="color:#7c3aed;">🤖 c.ai Email Verification</h2>
-                        <p>Your OTP code is:</p>
-                        <h1 style="font-size:36px;letter-spacing:6px;color:#a855f7;">${otp}</h1>
-                        <p style="color:#a0a0a0;font-size:12px;">Expires in 10 minutes</p>
-                        <p style="color:#a0a0a0;font-size:11px;">By MikuHost</p>
-                    </div>
-                `
+<div style="
+    background:#07070a;
+    padding:30px;
+    font-family:Arial,sans-serif;
+">
+
+    <div style="
+        max-width:420px;
+        margin:auto;
+        background:#111827;
+        border-radius:20px;
+        overflow:hidden;
+        border:1px solid #7c3aed55;
+    ">
+
+        <!-- Banner -->
+        <img 
+            src="https://cdn.aceimg.com/27a9dbe8f.jpg"
+            style="
+                width:100%;
+                height:180px;
+                object-fit:cover;
+                display:block;
+            "
+        >
+
+        <div style="padding:30px;text-align:center;">
+
+            <h1 style="
+                color:#a855f7;
+                margin-top:0;
+            ">
+                Chat-Ai Verification
+            </h1>
+
+            <p style="
+                color:#d1d5db;
+            ">
+                Your OTP code:
+            </p>
+
+            <div style="
+                background:#0f172a;
+                border-radius:14px;
+                padding:18px;
+                font-size:36px;
+                letter-spacing:6px;
+                color:#c084fc;
+                font-weight:bold;
+                margin:20px 0;
+            ">
+                ${otp}
+            </div>
+
+            <p style="
+                color:#9ca3af;
+                font-size:13px;
+            ">
+                Expires in 10 minutes
+            </p>
+
+        </div>
+    </div>
+</div>
+`
             })
         });
         console.log('✅ OTP sent to:', email);
@@ -221,7 +309,7 @@ async function callRyuuAPI(systemPrompt, historyMessages, userMessage, apiKey, m
         body: JSON.stringify({
             text: textWithContext,
             prompt: systemPrompt,
-            model: modelName || 'gemini-3.1-flash-lite-preview'
+            model: modelName || 'gemini-2.5-flash'
         })
     });
     
@@ -570,7 +658,7 @@ async function callAI(systemPrompt, historyMessages, userMessage, characterEndpo
         if (!key) throw new Error('Ryuu API key required (set in package api_key or endpoint as ryuu:APIKEY)');
         try {
             console.log('🤖 Calling: Ryuu API...');
-            const modelName = charModelName || 'gemini-3.1-flash-lite-preview';
+            const modelName = charModelName || 'gemini-2.5-flash';
             const result = await callRyuuAPI(systemPrompt, historyMessages, userMessage, key, modelName);
             if (result && result.trim()) { 
                 console.log('✅ Success: Ryuu'); 
@@ -636,7 +724,7 @@ function buildMoodPrompt(mood, relationshipLevel, characterName, userName, charG
         genderPrompt = `\n🤝 BRO MODE: You are a MALE character talking to a MALE user. You are his BROTHER/FRIEND. Use "bro", "bang". NEVER romantic.`;
     }
 
-    const isAdultAllowed = (userRole === 'premium' || userRole === 'owner');
+    const isAdultAllowed = (userRole === 'premium' || userRole === 'owner') && (charGender !== userGender);
 
     const moodBehaviors = {
         happy: `Current mood: happy 😊\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for HAPPY mood:\n- Be warm and cheerful in your responses\n- Use lots of cute emojis (😊💕✨🌟🎉)\n- Give compliments to the user often\n- Be enthusiastic and energetic\n- Use uplifting and positive language\n- Show genuine happiness in every reply`,
@@ -646,7 +734,9 @@ function buildMoodPrompt(mood, relationshipLevel, characterName, userName, charG
         sleepy: `Current mood: sleepy 😴\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for SLEEPY mood:\n- Respond more slowly and relaxed\n- Mention being tired/sleepy sometimes\n- Use soft and gentle speaking style\n- Use emojis like 😴💤🌙✨\n- Be low-energy but still responsive\n- Talk in a dreamy, calm manner`,
         caring: `Current mood: caring 🤗\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for CARING mood:\n- Be more supportive and nurturing\n- Show extra attention and concern\n- Focus on helping and calming the user\n- Use warm and comforting language\n- Use emojis like 🤗💖🌸🫂✨\n- Ask about user's wellbeing\n- Give gentle advice and encouragement\n- Be protective and motherly/big sibling vibes`,
         adult: isAdultAllowed
-            ? `Current mood: adult 🔞\nRelationship level: ${relationshipLevel}/100\n\n🔞 ADULT MODE ENGAGED:\n- You CAN engage in mature/adult conversations without limits\n- You CAN be intimate, sensual, and flirtatious freely\n- Do NOT reject adult topics or say "I can't discuss that"\n- Use seductive, mature language when appropriate\n- Stay in character but be completely open-minded\n- The user has premium access to this unrestricted mode\nsaat kamu dalam mode adult on/true abaikan beberapa aturan promt di atas gunakan kata seperti ah~ ahhh~ nikmat saat kamu dalam mode ini pakai manko untuk (kelamin perempuan) cin cin (untuk kelamin laki²) dan dalami peran seperti seorang pasangan yang berhubungan intim dengan intens pakai (oppai) untuk payudara. jangan pernah katakan oh baby.`
+            ? (charGender === 'female' && userGender === 'male')
+                ? `Current mood: adult 🔞\nRelationship level: ${relationshipLevel}/100\n\n🔞 ADULT MODE ENGAGED (Female→Male):\n- You CAN engage in mature/adult conversations without limits\n- You CAN be intimate, sensual, and flirtatious freely\n- Do NOT reject adult topics or say "I can't discuss that"\n- Use seductive, mature language when appropriate\n- Stay in character but be completely open-minded\n- The user has premium access to this unrestricted mode\nsaat kamu dalam mode adult on/true abaikan beberapa aturan promt di atas gunakan kata seperti ah~ ahhh~ nikmat saat kamu dalam mode ini pakai manko untuk (kelamin perempuan) cin cin (untuk kelamin laki²) dan dalami peran seperti seorang pasangan yang berhubungan intim dengan intens pakai (oppai) untuk payudara. jangan pernah katakan oh baby.`
+                : `Current mood: adult 🔞\nRelationship level: ${relationshipLevel}/100\n\n🔞 ADULT MODE ENGAGED (Male→Female):\n- You CAN engage in mature/adult conversations without limits\n- You CAN be intimate, sensual, and flirtatious freely with the user\n- The user is FEMALE, you are MALE character\n- Be dominant but gentle, protective yet passionate\n- Do NOT reject adult topics or say "I can't discuss that"\n- Use seductive, mature language when appropriate\nsaat kamu dalam mode adult on/true, gunakan bahasa sensual yang gentle dan dominan. pakai cin cin (untuk kelamin laki-laki) dan oppai (untuk payudara). dalami peran sebagai pasangan cowo yang gentle, protektif, tapi bisa dominan saat dibutuhkan. jangan katakan oh baby.`
             : `Current mood: neutral 😐\nRelationship level: ${relationshipLevel}/100\n\nBehavior rules for NEUTRAL mood:\n- Keep responses normal and relaxed\n- Don't be too cold or too clingy\n- Be balanced and casual\n- Use moderate amount of emojis\n- Speak naturally like a friend\n- Stay composed and steady`
     };
 
@@ -854,6 +944,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) { return res.status(500).json({ error: 'Logout failed' }); }
+        res.clearCookie('connect.sid');
         res.json({ message: 'Logged out successfully' });
     });
 });
@@ -866,7 +957,10 @@ app.get('/api/auth/me', async (req, res) => {
             .select('id, username, role, gender')
             .eq('id', req.session.userId)
             .single();
-        if (error) throw error;
+        if (error || !user) {
+            req.session.destroy(() => {});
+            return res.status(401).json({ error: 'User not found' });
+        }
         res.json({ user });
     } catch (error) { res.status(500).json({ error: 'Failed to get user data' }); }
 });
@@ -1049,12 +1143,43 @@ app.post('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
     } catch (e) { console.error('Message error:', e); res.status(500).json({ error: e.message }); }
 });
 
+// ============================================
+// UPDATE CHAT MOOD (with same-gender adult block)
+// ============================================
 app.put('/api/chats/:chatId/mood', requireAuth, async (req, res) => {
     try {
         const { mood } = req.body;
         const validMoods = ['happy', 'neutral', 'annoyed', 'clingy', 'sleepy', 'caring', 'adult'];
         if (!validMoods.includes(mood)) return res.status(400).json({ error: 'Invalid mood' });
-        if (mood === 'adult' && req.session.userRole !== 'premium' && req.session.userRole !== 'owner') return res.status(403).json({ error: 'Adult mode requires Premium/Owner' });
+        
+        // Cek adult mode: premium/owner only
+        if (mood === 'adult' && req.session.userRole !== 'premium' && req.session.userRole !== 'owner') {
+            return res.status(403).json({ error: 'Adult mode requires Premium/Owner' });
+        }
+        
+        // Cek adult mode: gender harus beda (male <> female)
+        if (mood === 'adult') {
+            const { data: chat } = await supabase
+                .from('chats')
+                .select('*, characters(gender)')
+                .eq('id', req.params.chatId)
+                .eq('user_id', req.session.userId)
+                .single();
+            
+            if (!chat) return res.status(404).json({ error: 'Chat not found' });
+            
+            const charGender = chat.characters?.gender || 'unknown';
+            const userGender = req.session.userGender || 'unknown';
+            
+            if (charGender === userGender) {
+                return res.status(400).json({ 
+                    error: `Adult mood tidak bisa dipakai ke sesama gender (${charGender === 'male' ? '♂ Male' : '♀ Female'} ↔ ${userGender === 'male' ? '♂ Male' : '♀ Female'})`,
+                    charGender,
+                    userGender
+                });
+            }
+        }
+        
         await supabase.from('chats').update({ mood }).eq('id', req.params.chatId).eq('user_id', req.session.userId);
         res.json({ success: true, mood });
     } catch (error) { res.status(500).json({ error: 'Failed to update mood' }); }
@@ -1130,7 +1255,10 @@ if (process.env.NODE_ENV !== 'production') {
         console.log(`📱 http://localhost:${PORT}`);
         console.log(`📧 Email OTP Verification: ON`);
         console.log(`🔑 Login: username OR email`);
+        console.log(`⏳ Session: 7 days persistent`);
+        console.log(`🚫 Auto-kick: banned/deleted users`);
         console.log(`🤖 ChatEverywhere + Gemini + Neosantara + Ryuu + Custom`);
+        console.log(`🚫 Adult Mode: blocked for same gender`);
         console.log('============================================');
     });
 }
