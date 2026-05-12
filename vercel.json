@@ -8,6 +8,38 @@
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "server.js"
+    },
+    {
+      "src": "/owner",
+      "dest": "server.js"
+    },
+    {
+      "src": "/owner.html",
+      "dest": "server.js"
+    },
+    {
+      "src": "/chat",
+      "dest": "server.js"
+    },
+    {
+      "src": "/chat.html",
+      "dest": "server.js"
+    },
+    {
+      "src": "/qris",
+      "dest": "server.js"
+    },
+    {
+      "src": "/verify",
+      "dest": "server.js"
+    },
+    {
+      "src": "/og-image.png",
+      "dest": "server.js"
+    },
+    {
       "src": "/(.*)",
       "dest": "server.js"
     }
