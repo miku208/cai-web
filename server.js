@@ -149,8 +149,8 @@ const requireRole = (...roles) => {
 // ============================================
 function getLimit(role) {
     if (role === 'owner') return Infinity;
-    if (role === 'premium') return 200;
-    return 50; // Default user
+    if (role === 'premium') return 150;
+    return 15; // Default user
 }
 
 // ============================================
@@ -171,18 +171,75 @@ async function sendOTPEmail(email, otp) {
                 'Authorization': `Bearer ${settings.resend_api_key}`
             },
             body: JSON.stringify({
-                from: `c.ai MikuHost <${settings.sender_email}>`,
+                from: `MikuHost <${settings.sender_email}>`,
                 to: email,
-                subject: 'Verify your email - c.ai By MikuHost',
+                subject: 'Verify your email - Chat-Ai By MikuHost',
                 html: `
-                    <div style="font-family:sans-serif;max-width:400px;margin:0 auto;padding:20px;background:#0a0a0f;color:#fff;border-radius:12px;text-align:center;">
-                        <h2 style="color:#7c3aed;">🤖 c.ai Email Verification</h2>
-                        <p>Your OTP code is:</p>
-                        <h1 style="font-size:36px;letter-spacing:6px;color:#a855f7;">${otp}</h1>
-                        <p style="color:#a0a0a0;font-size:12px;">Expires in 10 minutes</p>
-                        <p style="color:#a0a0a0;font-size:11px;">By MikuHost</p>
-                    </div>
-                `
+<div style="
+    background:#07070a;
+    padding:30px;
+    font-family:Arial,sans-serif;
+">
+
+    <div style="
+        max-width:420px;
+        margin:auto;
+        background:#111827;
+        border-radius:20px;
+        overflow:hidden;
+        border:1px solid #7c3aed55;
+    ">
+
+        <!-- Banner -->
+        <img 
+            src="https://cdn.aceimg.com/27a9dbe8f.jpg"
+            style="
+                width:100%;
+                height:180px;
+                object-fit:cover;
+                display:block;
+            "
+        >
+
+        <div style="padding:30px;text-align:center;">
+
+            <h1 style="
+                color:#a855f7;
+                margin-top:0;
+            ">
+                Chat-Ai Verification
+            </h1>
+
+            <p style="
+                color:#d1d5db;
+            ">
+                Your OTP code:
+            </p>
+
+            <div style="
+                background:#0f172a;
+                border-radius:14px;
+                padding:18px;
+                font-size:36px;
+                letter-spacing:6px;
+                color:#c084fc;
+                font-weight:bold;
+                margin:20px 0;
+            ">
+                ${otp}
+            </div>
+
+            <p style="
+                color:#9ca3af;
+                font-size:13px;
+            ">
+                Expires in 10 minutes
+            </p>
+
+        </div>
+    </div>
+</div>
+`
             })
         });
         console.log('✅ OTP sent to:', email);
