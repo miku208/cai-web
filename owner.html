@@ -12,7 +12,7 @@
         }
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
-
+        
         .dash { display:flex; min-height:100vh; }
         .dash-sb { width:220px; min-width:220px; background:var(--sb); border-right:1px solid var(--border); padding:20px 12px; position:sticky; top:0; height:100vh; overflow-y:auto; }
         .dash-logo { font-size:20px; font-weight:700; margin-bottom:24px; padding:0 12px; }
@@ -20,28 +20,24 @@
         .dash-nav a, .dash-nav button { padding:10px 14px; border-radius:10px; cursor:pointer; color:var(--muted); font-size:13px; font-weight:500; text-decoration:none; display:block; background:none; border:none; text-align:left; font-family:inherit; transition:all .2s; }
         .dash-nav a:hover, .dash-nav button:hover { background:rgba(255,255,255,0.04); color:var(--text); }
         .dash-nav a.active, .dash-nav button.active { background:rgba(124,58,237,0.2); color:var(--acc); }
-
+        
         .dash-main { flex:1; padding:28px; overflow-y:auto; }
-
-        .banner-wrap { margin-bottom:20px; border-radius:16px; overflow:hidden; border:1px solid var(--border); box-shadow:0 4px 20px rgba(108,92,231,0.15); }
-        .banner-wrap img { width:100%; height:auto; display:block; object-fit:cover; aspect-ratio:1200/400; }
-
+        .banner-wrap { margin-bottom:20px; border-radius:16px; overflow:hidden; border:1px solid var(--border); }
+        .banner-wrap img { width:100%; height:auto; display:block; aspect-ratio:1200/400; }
         .dash-title { font-size:22px; font-weight:700; margin-bottom:4px; }
         .dash-sub { color:var(--muted); font-size:13px; margin-bottom:20px; }
-
         .stats { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:14px; margin-bottom:20px; }
         .stat { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px; }
         .stat-l { color:var(--muted); font-size:12px; margin-bottom:6px; }
         .stat-v { font-size:28px; font-weight:700; }
-
         .table-wrap { background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:20px; }
         .table-head { padding:14px 18px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); }
         .table-head span { font-weight:600; font-size:14px; }
         .table-scroll { overflow-x:auto; }
         table { width:100%; border-collapse:collapse; }
         th,td { padding:10px 14px; text-align:left; border-bottom:1px solid var(--border); font-size:12px; white-space:nowrap; }
-        th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
-
+        th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; }
+        
         .badge { padding:3px 8px; border-radius:10px; font-size:10px; font-weight:600; }
         .badge.user { background:rgba(124,58,237,0.2);color:#a78bfa; }
         .badge.premium { background:rgba(245,158,11,0.2);color:#fbbf24; }
@@ -57,18 +53,18 @@
         .badge.verified { background:rgba(34,197,94,0.2);color:#4ade80; }
         .badge.unverified { background:rgba(245,158,11,0.2);color:#fbbf24; }
         .badge.free { background:rgba(34,197,94,0.2);color:#4ade80; }
-
-        .btn { padding:10px 20px; border-radius:10px; border:none; cursor:pointer; font-family:inherit; font-weight:600; font-size:13px; }
+        
+        .btn { padding:10px 20px; border-radius:10px; border:none; cursor:pointer; font-weight:600; font-size:13px; font-family:inherit; }
         .btn-p { background:var(--acc);color:white; }
         .btn-s { background:rgba(255,255,255,0.04);color:var(--text);border:1px solid var(--border); }
-        .btn-sm { padding:5px 10px; border-radius:6px; border:none; cursor:pointer; font-family:inherit; font-size:10px; font-weight:600; margin:1px; }
+        .btn-sm { padding:5px 10px; border-radius:6px; border:none; cursor:pointer; font-size:10px; font-weight:600; margin:1px; font-family:inherit; }
         .btn-sm.p { background:var(--acc);color:white; }
         .btn-sm.d { background:var(--red);color:white; }
         .btn-sm.s { background:var(--green);color:white; }
         .btn-sm.w { background:var(--warn);color:black; }
         .btn-sm.r { background:rgba(124,58,237,0.2);color:#a78bfa; }
         .btn-sm.v { background:rgba(34,197,94,0.2);color:#4ade80; }
-
+        
         .form-g { margin-bottom:14px; }
         .form-g label { display:block; margin-bottom:4px; color:var(--muted); font-size:12px; font-weight:500; }
         .form-g input, .form-g textarea, .form-g select { width:100%; padding:10px 14px; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; font-family:inherit; outline:none; }
@@ -76,37 +72,31 @@
         .form-g select option { background:var(--card); color:var(--text); }
         .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
         .form-check { display:flex;align-items:center;gap:8px;margin-bottom:14px; }
-        .form-check input { width:16px;height:16px;accent-color:var(--acc); }
+        .form-check input { width:16px;height:16px; }
         .form-check label { color:var(--text);font-size:13px; }
-
+        
         .modal { position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:100; }
         .modal.hidden { display:none; }
         .modal-b { background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;width:90%;max-height:80vh;overflow-y:auto; }
         .modal-b h3 { margin-bottom:16px; }
-
         .prem-opt { display:flex;flex-direction:column;gap:6px; }
-        .prem-opt button { padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); cursor:pointer; font-family:inherit; font-size:12px; font-weight:600; }
+        .prem-opt button { padding:10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); cursor:pointer; font-size:12px; font-weight:600; font-family:inherit; }
         .prem-opt button:hover { border-color:var(--warn); }
         .prem-opt button.perm { border-color:var(--green); color:var(--green); }
-
         .qris-preview { max-width:200px; border-radius:12px; border:2px solid var(--border); margin:10px auto; display:block; }
-
-        .toast { position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:10px;color:white;font-weight:500;z-index:200;font-size:12px; }
+        .toast { position:fixed;bottom停留20px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:10px;color:white;font-weight:500;z-index:200;font-size:12px; }
         .toast.ok { background:var(--green); }
         .toast.err { background:var(--red); }
-
         .hidden { display:none !important; }
         .text-c { text-align:center; color:var(--muted); }
-
+        
         @media (max-width:768px) {
             .dash { flex-direction:column; }
             .dash-sb { width:100%; min-width:auto; height:auto; padding:10px; position:relative; }
             .dash-nav { flex-direction:row; flex-wrap:wrap; gap:2px; }
-            .dash-nav a, .dash-nav button { font-size:11px; padding:6px 10px; }
             .dash-main { padding:14px; }
             .stats { grid-template-columns:1fr 1fr; }
             .form-row { grid-template-columns:1fr; }
-            .banner-wrap img { aspect-ratio:1200/500; }
         }
     </style>
 </head>
@@ -125,11 +115,10 @@
                 <button onclick="logout()">🚪 Logout</button>
             </nav>
         </aside>
-
+        
         <main class="dash-main">
-            <!-- Dashboard -->
             <div id="page-dashboard">
-                <div class="banner-wrap"><img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai By MikuHost" loading="eager"></div>
+                <div class="banner-wrap"><img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai"></div>
                 <div class="dash-title">Dashboard Overview</div>
                 <div class="dash-sub">Welcome back, Owner</div>
                 <div class="stats">
@@ -139,63 +128,57 @@
                     <div class="stat"><div class="stat-l">AI Characters</div><div class="stat-v" id="sCharacters">--</div></div>
                 </div>
             </div>
-
-            <!-- Users -->
+            
             <div id="page-users" class="hidden">
-                <div class="banner-wrap"><img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai By MikuHost" loading="lazy"></div>
+                <div class="banner-wrap"><img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai"></div>
                 <div class="dash-title">User Management</div>
                 <div class="dash-sub">Manage all registered users</div>
                 <div class="table-wrap">
-                    <div class="table-head"><span>All Users</span><button class="btn-sm p" onclick="loadUsers()">🔄 Refresh</button></div>
-                    <div class="table-scroll"><table><thead><tr><th>Username</th><th>Role</th><th>Gender</th><th>Verified</th><th>AI Limit</th><th>Msgs</th><th>Premium</th><th>Actions</th></tr></thead><tbody id="usersBody"><tr><td colspan="8" class="text-c">Loading...</td></tr></tbody></table></div>
+                    <div class="table-head"><span>All Users</span><button class="btn-sm p" onclick="loadUsers()">🔄</button></div>
+                    <div class="table-scroll"><table><thead><tr><th>Username</th><th>Role</th><th>Gender</th><th>Verified</th><th>Msgs</th><th>Premium</th><th>Actions</th></tr></thead><tbody id="usersBody"></tbody></table></div>
                 </div>
             </div>
-
-            <!-- AI Manager -->
+            
             <div id="page-characters" class="hidden">
-                <div class="banner-wrap"><img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai By MikuHost" loading="lazy"></div>
+                <div class="banner-wrap"><img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai"></div>
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                    <div><div class="dash-title">AI Character Manager</div><div class="dash-sub">Manage ALL AI characters (System + User-created)</div></div>
+                    <div><div class="dash-title">AI Manager</div><div class="dash-sub">All characters (System + User-created)</div></div>
                     <button class="btn btn-p" onclick="showAddForm()">+ Add AI</button>
                 </div>
                 <div class="table-wrap">
-                    <div class="table-scroll"><table><thead><tr><th>Avatar</th><th>Name</th><th>Gender</th><th>Package</th><th>Created By</th><th>Status</th><th>Visibility</th><th>Actions</th></tr></thead><tbody id="charsBody"><tr><td colspan="8" class="text-c">Loading...</td></tr></tbody></table></div>
+                    <div class="table-scroll"><table><thead><tr><th>Avatar</th><th>Name</th><th>Gender</th><th>Package</th><th>Status</th><th>Visibility</th><th>Actions</th></tr></thead><tbody id="charsBody"></tbody></table></div>
                 </div>
             </div>
-
-            <!-- Packages -->
+            
             <div id="page-packages" class="hidden">
-                <div class="banner-wrap"><img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai By MikuHost" loading="lazy"></div>
+                <div class="banner-wrap"><img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai"></div>
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                    <div><div class="dash-title">AI Packages</div><div class="dash-sub">Manage API endpoints, keys & premium status</div></div>
+                    <div><div class="dash-title">AI Packages</div><div class="dash-sub">Manage endpoints, keys & premium status</div></div>
                     <button class="btn btn-p" onclick="showPkgForm()">+ Add Package</button>
                 </div>
                 <div class="table-wrap">
-                    <div class="table-scroll"><table><thead><tr><th>Name</th><th>URL</th><th>Model</th><th>Type</th><th>API Key</th><th>Actions</th></tr></thead><tbody id="pkgsBody"><tr><td colspan="6" class="text-c">Loading...</td></tr></tbody></table></div>
+                    <div class="table-scroll"><table><thead><tr><th>Name</th><th>URL</th><th>Model</th><th>Type</th><th>API Key</th><th>Actions</th></tr></thead><tbody id="pkgsBody"></tbody></table></div>
                 </div>
             </div>
-
-            <!-- Settings -->
+            
             <div id="page-settings" class="hidden">
-                <div class="banner-wrap"><img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai By MikuHost" loading="lazy"></div>
+                <div class="banner-wrap"><img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai"></div>
                 <div class="dash-title">Settings</div>
                 <div class="dash-sub">Manage website settings</div>
-
-                <div class="table-wrap"><div class="table-head"><span>QRIS Image</span></div><div style="padding:20px;"><div class="form-g"><label>QRIS Image URL</label><input type="text" id="qrisUrl"></div><div style="text-align:center;"><img id="qrisPreview" src="" class="qris-preview" onerror="this.style.display='none'"></div></div></div>
+                <div class="table-wrap"><div class="table-head"><span>QRIS Image</span></div><div style="padding:20px;"><div class="form-g"><label>QRIS URL</label><input type="text" id="qrisUrl"></div><div style="text-align:center;"><img id="qrisPreview" src="" class="qris-preview" onerror="this.style.display='none'"></div></div></div>
                 <div class="table-wrap" style="margin-top:20px;"><div class="table-head"><span>📧 Email OTP (Resend)</span></div><div style="padding:20px;"><div class="form-g"><label>Resend API Key</label><input type="text" id="resendApiKey"></div><div class="form-g"><label>Sender Email</label><input type="email" id="senderEmail"></div></div></div>
                 <div class="table-wrap" style="margin-top:20px;"><div class="table-head"><span>📱 WhatsApp Owner</span></div><div style="padding:20px;"><div class="form-g"><label>Nomor (628xxx)</label><input type="text" id="ownerWhatsapp"></div></div></div>
                 <button class="btn btn-p" onclick="saveSettings()" style="margin-top:16px;">💾 Save All Settings</button>
             </div>
-
-            <!-- Logs -->
+            
             <div id="page-logs" class="hidden">
-                <div class="banner-wrap"><img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai By MikuHost" loading="lazy"></div>
+                <div class="banner-wrap"><img src="https://cdn.aceimg.com/27a9dbe8f.jpg" alt="c.ai"></div>
                 <div class="dash-title">Activity Logs</div><div class="dash-sub">Recent system activities</div>
                 <div class="table-wrap"><div class="table-scroll"><table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th><th>IP</th></tr></thead><tbody id="logsBody"></tbody></table></div></div>
             </div>
         </main>
     </div>
-
+    
     <!-- Character Modal -->
     <div class="modal hidden" id="charModal"><div class="modal-b" style="max-width:600px;"><h3 id="charModalTitle">Add AI Character</h3>
         <form id="charForm"><input type="hidden" id="editId">
@@ -207,11 +190,11 @@
             <div class="form-g"><label>Package</label><select id="cPackage"><option value="">Default</option></select></div>
             <div class="form-g"><label>Endpoint URL</label><input type="text" id="cEndpoint"></div>
             <div class="form-g"><label>Model Name</label><input type="text" id="cModel" value="gpt-4"></div>
-            <div class="form-row"><div class="form-g"><label>Status</label><select id="cStatus"><option value="online">Online</option><option value="maintenance">Maintenance</option><option value="offline">Offline</option></select></div><div class="form-g"><label>Visibility</label><select id="cVisibility"><option value="all">All</option><option value="public">Public</option><option value="premium-only">Premium Only</option><option value="private">Private</option></select></div></div>
+            <div class="form-row"><div class="form-g"><label>Status</label><select id="cStatus"><option value="online">Online</option><option value="maintenance">Maintenance</option><option value="offline">Offline</option></select></div><div class="form-g"><label>Visibility</label><select id="cVisibility"><option value="all">All</option><option value="public">Public</option><option value="premium-only">Premium</option><option value="private">Private</option></select></div></div>
             <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;"><button type="button" class="btn btn-s" onclick="closeCharModal()">Cancel</button><button type="submit" class="btn btn-p">Save</button></div>
         </form>
     </div></div>
-
+    
     <!-- Package Modal -->
     <div class="modal hidden" id="pkgModal"><div class="modal-b" style="max-width:500px;"><h3 id="pkgModalTitle">Add Package</h3>
         <form id="pkgForm"><input type="hidden" id="pkgEditId">
@@ -223,80 +206,106 @@
             <div style="display:flex;gap:10px;justify-content:flex-end;"><button type="button" class="btn btn-s" onclick="closePkgModal()">Cancel</button><button type="submit" class="btn btn-p">Save</button></div>
         </form>
     </div></div>
-
+    
     <!-- Premium Modal -->
     <div class="modal hidden" id="premModal"><div class="modal-b" style="max-width:360px;text-align:center;"><h3>Set Premium</h3><p style="color:var(--muted);">Duration for <strong id="premUser"></strong></p>
-        <div class="prem-opt">
-            <button onclick="setPremium('5')">📅 5 Days</button><button onclick="setPremium('10')">📅 10 Days</button><button onclick="setPremium('20')">📅 20 Days</button><button onclick="setPremium('30')">📅 30 Days</button><button class="perm" onclick="setPremium('permanent')">♾️ Permanent</button>
-        </div>
+        <div class="prem-opt"><button onclick="setPremium('5')">📅 5 Days</button><button onclick="setPremium('10')">📅 10 Days</button><button onclick="setPremium('20')">📅 20 Days</button><button onclick="setPremium('30')">📅 30 Days</button><button class="perm" onclick="setPremium('permanent')">♾️ Permanent</button></div>
         <button class="btn btn-s" style="margin-top:14px;width:100%;" onclick="closePremModal()">Cancel</button>
     </div></div>
 
     <script>
+        // ==================== FORCE CLEAR SESSION (DEBUG) ====================
+        if (window.location.search === '?clear') {
+            sessionStorage.clear();
+            localStorage.clear();
+            document.cookie.split(';').forEach(function(c) {
+                document.cookie = c.replace(/^ +/, '').replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/');
+            });
+            window.location.href = '/owner';
+        }
+        
         (function() { history.pushState(null, '', location.href); window.addEventListener('popstate', function() { history.pushState(null, '', location.href); location.replace('/'); }); })();
-        document.addEventListener('visibilitychange', async function() { if (document.visibilityState === 'visible') { try { var d = await api('/api/auth/me'); if (!d.user || d.user.role !== 'owner') { sessionStorage.clear(); localStorage.clear(); location.replace('/'); } } catch(e) { sessionStorage.clear(); localStorage.clear(); location.replace('/'); } } });
-
-        (async function() {
-            try { var d = await api('/api/auth/me'); if (!d.user || d.user.role !== 'owner') { sessionStorage.clear(); localStorage.clear(); location.replace('/'); return; } } catch(e) { sessionStorage.clear(); localStorage.clear(); location.replace('/'); return; }
-            loadStats(); loadUsers(); loadChars(); loadPkgs(); loadLogs(); loadSettings();
-            document.getElementById('charForm').addEventListener('submit', saveChar);
-            document.getElementById('pkgForm').addEventListener('submit', savePkg);
-        })();
-
-        async function api(url, opt = {}) { var r = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }, ...opt }); var d = await r.json(); if (!r.ok) { if (d.error && (d.error.indexOf('Unauthorized') !== -1 || d.error.indexOf('banned') !== -1)) { sessionStorage.clear(); localStorage.clear(); location.replace('/'); throw new Error(d.error); } throw new Error(d.error || 'Error'); } return d; }
-
+        
+        async function api(url, opt = {}) { 
+            var r = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opt }); 
+            var d = await r.json(); 
+            if (!r.ok) { 
+                if (d.error && (d.error.indexOf('Unauthorized') !== -1 || d.error.indexOf('banned') !== -1 || d.error.indexOf('Not authenticated') !== -1)) { 
+                    sessionStorage.clear(); localStorage.clear(); 
+                    document.cookie.split(';').forEach(function(c) { document.cookie = c.replace(/^ +/, '').replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/'); });
+                    location.replace('/'); throw new Error(d.error); 
+                } 
+                throw new Error(d.error || 'Error'); 
+            } 
+            return d; 
+        }
+        
         var allChars = [], allPkgs = [], premId = null;
-
+        
         function switchPage(p) { document.querySelectorAll('.dash-nav button').forEach(function(b) { b.classList.remove('active'); }); var btn = document.querySelector('[data-p="' + p + '"]'); if (btn) btn.classList.add('active'); ['dashboard','users','characters','packages','settings','logs'].forEach(function(x) { document.getElementById('page-' + x).classList.toggle('hidden', x !== p); }); if (p === 'users') loadUsers(); if (p === 'characters') { loadChars(); loadPkgs(); } if (p === 'packages') loadPkgs(); if (p === 'settings') loadSettings(); if (p === 'logs') loadLogs(); if (p === 'dashboard') loadStats(); }
         async function loadStats() { try { var d = await api('/api/owner/stats'); document.getElementById('sUsers').textContent = d.users||0; document.getElementById('sChats').textContent = d.chats||0; document.getElementById('sMessages').textContent = d.messages||0; document.getElementById('sCharacters').textContent = d.characters||0; } catch(e) {} }
-
-        async function loadUsers() {
-            try { var d = await api('/api/owner/users'); document.getElementById('usersBody').innerHTML = (d.users||[]).map(function(u) { return '<tr><td><strong>'+u.username+'</strong></td><td><span class="badge '+u.role+'">'+u.role+'</span>'+(u.is_banned?' <span class="badge banned">banned</span>':'')+'</td><td><span class="badge '+(u.gender==='male'?'male':'female')+'">'+(u.gender==='male'?'♂':'♀')+'</span></td><td><span class="badge '+(u.verified?'verified':'unverified')+'">'+(u.verified?'✅':'⚠️')+'</span></td><td>'+(u.max_ai_characters||5)+'</td><td>'+(u.daily_message_count||0)+'</td><td>'+(u.premium_expired_at?new Date(u.premium_expired_at).toLocaleDateString():'-')+'</td><td>'+(!u.is_banned?'<button class="btn-sm d" onclick="banUser(\''+u.id+'\')">Ban</button>':'<button class="btn-sm s" onclick="unbanUser(\''+u.id+'\')">Unban</button>')+(u.role!=='premium'?'<button class="btn-sm w" onclick="showPrem(\''+u.id+'\',\''+u.username+'\')">⭐ Premium</button>':'<button class="btn-sm p" onclick="setRole(\''+u.id+'\',\'user\')">👤 User</button>')+(!u.verified?'<button class="btn-sm v" onclick="verifyUser(\''+u.id+'\')">✅ Verify</button>':'')+'<button class="btn-sm r" onclick="resetDaily(\''+u.id+'\')">🔄 Reset</button>'+(u.role!=='owner'?'<button class="btn-sm d" onclick="delUser(\''+u.id+'\')">🗑️</button>':'')+'</td></tr>'; }).join(''); } catch(e) {}
-        }
-
-        async function loadChars() {
-            try {
-                var d = await api('/api/owner/characters'); allChars = d.characters || [];
-                document.getElementById('charsBody').innerHTML = allChars.map(function(c) {
-                    var createdBy = c.creator?.username ? '<span style="color:#60a5fa;">@'+c.creator.username+'</span>' : (c.created_by ? '<span style="color:var(--muted);">User</span>' : '<span class="badge online">System</span>');
-                    return '<tr><td>'+(c.avatar_url&&c.avatar_url.startsWith('http')?'<img src="'+c.avatar_url+'" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">':c.avatar_url||'🤖')+'</td><td><strong>'+c.name+'</strong></td><td><span class="badge '+(c.gender==='male'?'male':'female')+'">'+(c.gender==='male'?'♂ Male':'♀ Female')+'</span></td><td>'+(c.ai_packages?.name?c.ai_packages.name+(c.ai_packages.is_premium?' ⭐':' Free'):'Default')+'</td><td>'+createdBy+'</td><td><span class="badge '+(c.status==='offline'?'offline':c.status==='maintenance'?'maintenance':'online')+'">'+(c.status||'online')+'</span></td><td><span class="badge '+(c.visibility==='private'?'private':c.visibility==='premium-only'?'premium-only':'online')+'">'+(c.visibility||'public')+'</span></td><td><button class="btn-sm p" onclick="editChar(\''+c.id+'\')">✏️</button> <button class="btn-sm d" onclick="delChar(\''+c.id+'\')">🗑️</button></td></tr>';
-                }).join('');
-            } catch(e) {}
-        }
-
-        async function loadPkgs() {
-            try { var d = await api('/api/owner/packages'); allPkgs = d.packages || []; document.getElementById('cPackage').innerHTML = '<option value="">Default (ChatEverywhere)</option>'+allPkgs.map(function(p){return '<option value="'+p.id+'">'+p.name+(p.is_premium?' ⭐Premium':' Free')+'</option>';}).join(''); document.getElementById('pkgsBody').innerHTML = allPkgs.map(function(p){return '<tr><td><strong>'+p.name+'</strong></td><td>'+p.url+'</td><td>'+(p.model_name||'gpt-4')+'</td><td><span class="badge '+(p.is_premium?'premium':'free')+'">'+(p.is_premium?'⭐ Premium':'Free')+'</span></td><td>'+(p.api_key?'✅':'❌')+'</td><td><button class="btn-sm p" onclick="editPkg(\''+p.id+'\')">✏️</button> <button class="btn-sm d" onclick="delPkg(\''+p.id+'\')">🗑️</button></td></tr>';}).join(''); } catch(e) {}
-        }
-
+        
+        async function loadUsers() { try { var d = await api('/api/owner/users'); document.getElementById('usersBody').innerHTML = (d.users||[]).map(function(u) { return '<tr><td><strong>'+u.username+'</strong></td><td><span class="badge '+u.role+'">'+u.role+'</span>'+(u.is_banned?' <span class="badge banned">banned</span>':'')+'</td><td><span class="badge '+(u.gender==='male'?'male':'female')+'">'+(u.gender==='male'?'♂':'♀')+'</span></td><td><span class="badge '+(u.verified?'verified':'unverified')+'">'+(u.verified?'✅':'⚠️')+'</span></td><td>'+(u.daily_message_count||0)+'</td><td>'+(u.premium_expired_at?new Date(u.premium_expired_at).toLocaleDateString():'-')+'</td><td>'+(!u.is_banned?'<button class="btn-sm d" onclick="banUser(\''+u.id+'\')">Ban</button>':'<button class="btn-sm s" onclick="unbanUser(\''+u.id+'\')">Unban</button>')+(u.role!=='premium'?'<button class="btn-sm w" onclick="showPrem(\''+u.id+'\',\''+u.username+'\')">⭐ Premium</button>':'<button class="btn-sm p" onclick="setRole(\''+u.id+'\',\'user\')">👤 User</button>')+(!u.verified?'<button class="btn-sm v" onclick="verifyUser(\''+u.id+'\')">✅ Verify</button>':'')+'<button class="btn-sm r" onclick="resetDaily(\''+u.id+'\')">🔄 Reset</button>'+(u.role!=='owner'?'<button class="btn-sm d" onclick="delUser(\''+u.id+'\')">🗑️</button>':'')+'</td></tr>'; }).join(''); } catch(e) {} }
+        async function loadChars() { try { var d = await api('/api/owner/characters'); allChars = d.characters || []; document.getElementById('charsBody').innerHTML = allChars.map(function(c) { return '<tr><td>'+(c.avatar_url&&c.avatar_url.startsWith('http')?'<img src="'+c.avatar_url+'" style="width:30px;height:30px;border-radius:50%;object-fit:cover;">':c.avatar_url||'🤖')+'</td><td><strong>'+c.name+'</strong></td><td><span class="badge '+(c.gender==='male'?'male':'female')+'">'+(c.gender==='male'?'♂ Male':'♀ Female')+'</span></td><td>'+(c.ai_packages?.name?c.ai_packages.name+(c.ai_packages.is_premium?' ⭐':' Free'):'Default')+'</td><td><span class="badge '+(c.status==='offline'?'offline':c.status==='maintenance'?'maintenance':'online')+'">'+(c.status||'online')+'</span></td><td><span class="badge '+(c.visibility==='private'?'private':c.visibility==='premium-only'?'premium-only':'online')+'">'+(c.visibility||'public')+'</span></td><td><button class="btn-sm p" onclick="editChar(\''+c.id+'\')">✏️</button> <button class="btn-sm d" onclick="delChar(\''+c.id+'\')">🗑️</button></td></tr>'; }).join(''); } catch(e) {} }
+        async function loadPkgs() { try { var d = await api('/api/owner/packages'); allPkgs = d.packages || []; document.getElementById('cPackage').innerHTML = '<option value="">Default</option>'+allPkgs.map(function(p){return '<option value="'+p.id+'">'+p.name+(p.is_premium?' ⭐Premium':' Free')+'</option>';}).join(''); document.getElementById('pkgsBody').innerHTML = allPkgs.map(function(p){return '<tr><td><strong>'+p.name+'</strong></td><td>'+p.url+'</td><td>'+(p.model_name||'gpt-4')+'</td><td><span class="badge '+(p.is_premium?'premium':'free')+'">'+(p.is_premium?'⭐ Premium':'Free')+'</span></td><td>'+(p.api_key?'✅':'❌')+'</td><td><button class="btn-sm p" onclick="editPkg(\''+p.id+'\')">✏️</button> <button class="btn-sm d" onclick="delPkg(\''+p.id+'\')">🗑️</button></td></tr>';}).join(''); } catch(e) {} }
         async function loadLogs() { try { var d = await api('/api/owner/logs'); document.getElementById('logsBody').innerHTML = (d.logs||[]).map(function(l){return '<tr><td>'+new Date(l.created_at).toLocaleString()+'</td><td>'+(l.user_id||'-')+'</td><td>'+l.action+'</td><td>'+(typeof l.details==='object'?JSON.stringify(l.details).substring(0,80):(l.details||'-'))+'</td><td>'+(l.ip_address||'-')+'</td></tr>';}).join(''); } catch(e) {} }
         async function loadSettings() { try { var d = await api('/api/owner/settings'); if(d.settings){ document.getElementById('qrisUrl').value=d.settings.qris_url||''; document.getElementById('resendApiKey').value=d.settings.resend_api_key||''; document.getElementById('senderEmail').value=d.settings.sender_email||''; document.getElementById('ownerWhatsapp').value=d.settings.owner_whatsapp||''; document.getElementById('qrisPreview').src=d.settings.qris_url||''; document.getElementById('qrisPreview').style.display=d.settings.qris_url?'block':'none'; } } catch(e) {} }
-        async function saveSettings() { await api('/api/owner/settings',{method:'PUT',body:JSON.stringify({qris_url:document.getElementById('qrisUrl').value,resend_api_key:document.getElementById('resendApiKey').value,sender_email:document.getElementById('senderEmail').value,owner_whatsapp:document.getElementById('ownerWhatsapp').value})}); document.getElementById('qrisPreview').src=document.getElementById('qrisUrl').value; document.getElementById('qrisPreview').style.display=document.getElementById('qrisUrl').value?'block':'none'; toast('Settings saved!','ok'); }
-
+        async function saveSettings() { await api('/api/owner/settings',{method:'PUT',body:JSON.stringify({qris_url:document.getElementById('qrisUrl').value,resend_api_key:document.getElementById('resendApiKey').value,sender_email:document.getElementById('senderEmail').value,owner_whatsapp:document.getElementById('ownerWhatsapp').value})}); document.getElementById('qrisPreview').src=document.getElementById('qrisUrl').value; document.getElementById('qrisPreview').style.display=document.getElementById('qrisUrl').value?'block':'none'; toast('Saved!','ok'); }
+        
         async function updUser(id,data){await api('/api/owner/users/'+id,{method:'PUT',body:JSON.stringify(data)});loadUsers();}
-        function banUser(id){updUser(id,{is_banned:true});}
-        function unbanUser(id){updUser(id,{is_banned:false});}
+        function banUser(id){updUser(id,{is_banned:true});} function unbanUser(id){updUser(id,{is_banned:false});}
         function setRole(id,role){var data={role:role};if(role==='premium')data.max_ai_characters=15;else if(role==='user')data.max_ai_characters=5;updUser(id,data);}
-        function verifyUser(id){updUser(id,{verified:true});toast('Verified!','ok');}
-        function resetDaily(id){updUser(id,{daily_message_count:0,last_message_date:new Date().toISOString().split('T')[0]});toast('Reset!','ok');}
-        async function delUser(id){if(!confirm('Delete permanently?'))return;try{await api('/api/owner/users/'+id,{method:'DELETE'});loadUsers();toast('Deleted','ok');}catch(e){toast(e.message,'err');}}
+        function verifyUser(id){updUser(id,{verified:true});toast('Verified!','ok');} function resetDaily(id){updUser(id,{daily_message_count:0,last_message_date:new Date().toISOString().split('T')[0]});toast('Reset!','ok');}
+        async function delUser(id){if(!confirm('Delete?'))return;try{await api('/api/owner/users/'+id,{method:'DELETE'});loadUsers();toast('Deleted','ok');}catch(e){toast(e.message,'err');}}
         function showPrem(id,name){premId=id;document.getElementById('premUser').textContent=name;document.getElementById('premModal').classList.remove('hidden');}
         function closePremModal(){document.getElementById('premModal').classList.add('hidden');premId=null;}
         function setPremium(dur){if(!premId)return;var d=new Date();if(dur==='permanent')d.setFullYear(d.getFullYear()+100);else d.setDate(d.getDate()+parseInt(dur));updUser(premId,{role:'premium',premium_expired_at:d.toISOString(),max_ai_characters:15});closePremModal();toast('Premium!','ok');}
-
-        function showAddForm(){document.getElementById('editId').value='';document.getElementById('charModalTitle').textContent='Add AI Character';document.getElementById('charForm').reset();document.getElementById('cGender').value='female';document.getElementById('cStatus').value='online';document.getElementById('cVisibility').value='all';document.getElementById('cModel').value='gpt-4';document.getElementById('charModal').classList.remove('hidden');}
-        function editChar(id){var c=allChars.find(function(x){return x.id===id});if(!c)return;document.getElementById('editId').value=c.id;document.getElementById('charModalTitle').textContent='Edit AI Character';document.getElementById('cName').value=c.name||'';document.getElementById('cAvatar').value=c.avatar_url||'';document.getElementById('cDesc').value=c.description||'';document.getElementById('cPrompt').value=c.system_prompt||'';document.getElementById('cEndpoint').value=c.endpoint_url||'';document.getElementById('cModel').value=c.model_name||'gpt-4';document.getElementById('cPackage').value=c.package_id||'';document.getElementById('cGender').value=c.gender||'female';document.getElementById('cStatus').value=c.status||'online';document.getElementById('cVisibility').value=c.visibility||'all';document.getElementById('charModal').classList.remove('hidden');}
+        
+        function showAddForm(){document.getElementById('editId').value='';document.getElementById('charModalTitle').textContent='Add AI';document.getElementById('charForm').reset();document.getElementById('cGender').value='female';document.getElementById('cStatus').value='online';document.getElementById('cVisibility').value='all';document.getElementById('cModel').value='gpt-4';document.getElementById('charModal').classList.remove('hidden');}
+        function editChar(id){var c=allChars.find(function(x){return x.id===id});if(!c)return;document.getElementById('editId').value=c.id;document.getElementById('charModalTitle').textContent='Edit AI';document.getElementById('cName').value=c.name||'';document.getElementById('cAvatar').value=c.avatar_url||'';document.getElementById('cDesc').value=c.description||'';document.getElementById('cPrompt').value=c.system_prompt||'';document.getElementById('cEndpoint').value=c.endpoint_url||'';document.getElementById('cModel').value=c.model_name||'gpt-4';document.getElementById('cPackage').value=c.package_id||'';document.getElementById('cGender').value=c.gender||'female';document.getElementById('cStatus').value=c.status||'online';document.getElementById('cVisibility').value=c.visibility||'all';document.getElementById('charModal').classList.remove('hidden');}
         function closeCharModal(){document.getElementById('charModal').classList.add('hidden');}
         async function saveChar(e){e.preventDefault();var data={name:document.getElementById('cName').value,avatar_url:document.getElementById('cAvatar').value,description:document.getElementById('cDesc').value,system_prompt:document.getElementById('cPrompt').value,endpoint_url:document.getElementById('cEndpoint').value,model_name:document.getElementById('cModel').value,package_id:document.getElementById('cPackage').value||null,gender:document.getElementById('cGender').value,status:document.getElementById('cStatus').value,visibility:document.getElementById('cVisibility').value};var editId=document.getElementById('editId').value;var url=editId?'/api/owner/characters/'+editId:'/api/owner/characters';var method=editId?'PUT':'POST';try{await api(url,{method:method,body:JSON.stringify(data)});closeCharModal();loadChars();toast(editId?'Updated!':'Created!','ok');}catch(e){toast(e.message,'err');}}
-        async function delChar(id){if(!confirm('Delete AI + all chats?'))return;await api('/api/owner/characters/'+id,{method:'DELETE'});loadChars();toast('Deleted','ok');}
-
+        async function delChar(id){if(!confirm('Delete AI + chats?'))return;await api('/api/owner/characters/'+id,{method:'DELETE'});loadChars();toast('Deleted','ok');}
+        
         function showPkgForm(){document.getElementById('pkgEditId').value='';document.getElementById('pkgModalTitle').textContent='Add Package';document.getElementById('pkgForm').reset();document.getElementById('pkgModel').value='gpt-4';document.getElementById('pkgIsPremium').checked=false;document.getElementById('pkgModal').classList.remove('hidden');}
         function editPkg(id){var p=allPkgs.find(function(x){return x.id===id});if(!p)return;document.getElementById('pkgEditId').value=p.id;document.getElementById('pkgModalTitle').textContent='Edit Package';document.getElementById('pkgName').value=p.name||'';document.getElementById('pkgUrl').value=p.url||'';document.getElementById('pkgApiKey').value=p.api_key||'';document.getElementById('pkgModel').value=p.model_name||'gpt-4';document.getElementById('pkgIsPremium').checked=p.is_premium||false;document.getElementById('pkgModal').classList.remove('hidden');}
         function closePkgModal(){document.getElementById('pkgModal').classList.add('hidden');}
         async function savePkg(e){e.preventDefault();var data={name:document.getElementById('pkgName').value,url:document.getElementById('pkgUrl').value,api_key:document.getElementById('pkgApiKey').value||null,model_name:document.getElementById('pkgModel').value,is_premium:document.getElementById('pkgIsPremium').checked};var editId=document.getElementById('pkgEditId').value;var url=editId?'/api/owner/packages/'+editId:'/api/owner/packages';var method=editId?'PUT':'POST';try{await api(url,{method:method,body:JSON.stringify(data)});closePkgModal();loadPkgs();toast(editId?'Updated!':'Created!','ok');}catch(e){toast(e.message,'err');}}
         async function delPkg(id){if(!confirm('Delete?'))return;await api('/api/owner/packages/'+id,{method:'DELETE'});loadPkgs();toast('Deleted','ok');}
-
+        
         function toast(m,t){t=t||'ok';var e=document.createElement('div');e.className='toast '+t;e.textContent=m;document.body.appendChild(e);setTimeout(function(){e.remove();},2500);}
-        async function logout(){sessionStorage.clear();localStorage.clear();try{await api('/api/auth/logout',{method:'POST'});}catch(e){}location.replace('/');}
+        async function logout(){
+            sessionStorage.clear(); localStorage.clear();
+            document.cookie.split(';').forEach(function(c) { document.cookie = c.replace(/^ +/, '').replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/'); });
+            try{await api('/api/auth/logout',{method:'POST'});}catch(e){}
+            location.replace('/');
+        }
+        
+        // ==================== INIT ====================
+        (async function() {
+            console.log('🔍 Checking owner session...');
+            try {
+                var d = await api('/api/auth/me');
+                console.log('📦 Session data:', JSON.stringify(d));
+                if (!d.user || d.user.role !== 'owner') {
+                    console.log('❌ Not owner, redirecting...');
+                    sessionStorage.clear(); localStorage.clear();
+                    document.cookie.split(';').forEach(function(c) { document.cookie = c.replace(/^ +/, '').replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/'); });
+                    location.replace('/');
+                    return;
+                }
+                console.log('✅ Owner confirmed: ' + d.user.username);
+            } catch(e) {
+                console.error('❌ Auth check failed:', e.message);
+                sessionStorage.clear(); localStorage.clear();
+                document.cookie.split(';').forEach(function(c) { document.cookie = c.replace(/^ +/, '').replace(/=.*/, '=;expires=' + new Date().toUTCString() + ';path=/'); });
+                location.replace('/');
+                return;
+            }
+            loadStats(); loadUsers(); loadChars(); loadPkgs(); loadLogs(); loadSettings();
+            document.getElementById('charForm').addEventListener('submit', saveChar);
+            document.getElementById('pkgForm').addEventListener('submit', savePkg);
+        })();
     </script>
 </body>
 </html>
