@@ -150,7 +150,7 @@ const requireRole = (...roles) => {
 function getLimit(role) {
     if (role === 'owner') return Infinity;
     if (role === 'premium') return 150;
-    return 15;
+    return 15; // Default user
 }
 
 // ============================================
@@ -175,17 +175,71 @@ async function sendOTPEmail(email, otp) {
                 to: email,
                 subject: 'Verify your email - Chat-Ai By MikuHost',
                 html: `
-<div style="background:#07070a;padding:30px;font-family:Arial,sans-serif;">
-    <div style="max-width:420px;margin:auto;background:#111827;border-radius:20px;overflow:hidden;border:1px solid #7c3aed55;">
-        <img src="https://cdn.aceimg.com/27a9dbe8f.jpg" style="width:100%;height:180px;object-fit:cover;display:block;">
+<div style="
+    background:#07070a;
+    padding:30px;
+    font-family:Arial,sans-serif;
+">
+
+    <div style="
+        max-width:420px;
+        margin:auto;
+        background:#111827;
+        border-radius:20px;
+        overflow:hidden;
+        border:1px solid #7c3aed55;
+    ">
+
+        <!-- Banner -->
+        <img 
+            src="https://cdn.aceimg.com/27a9dbe8f.jpg"
+            style="
+                width:100%;
+                height:180px;
+                object-fit:cover;
+                display:block;
+            "
+        >
+
         <div style="padding:30px;text-align:center;">
-            <h1 style="color:#a855f7;margin-top:0;">Chat-Ai Verification</h1>
-            <p style="color:#d1d5db;">Your OTP code:</p>
-            <div style="background:#0f172a;border-radius:14px;padding:18px;font-size:36px;letter-spacing:6px;color:#c084fc;font-weight:bold;margin:20px 0;">${otp}</div>
-            <p style="color:#9ca3af;font-size:13px;">Expires in 10 minutes</p>
+
+            <h1 style="
+                color:#a855f7;
+                margin-top:0;
+            ">
+                Chat-Ai Verification
+            </h1>
+
+            <p style="
+                color:#d1d5db;
+            ">
+                Your OTP code:
+            </p>
+
+            <div style="
+                background:#0f172a;
+                border-radius:14px;
+                padding:18px;
+                font-size:36px;
+                letter-spacing:6px;
+                color:#c084fc;
+                font-weight:bold;
+                margin:20px 0;
+            ">
+                ${otp}
+            </div>
+
+            <p style="
+                color:#9ca3af;
+                font-size:13px;
+            ">
+                Expires in 10 minutes
+            </p>
+
         </div>
     </div>
-</div>`
+</div>
+`
             })
         });
         console.log('✅ OTP sent to:', email);
@@ -212,12 +266,22 @@ async function callRyuuAPI(systemPrompt, historyMessages, userMessage, apiKey, m
         ? `${contextHistory}\nUser: ${userMessage}` 
         : userMessage;
     
-    console.log(`📤 Ryuu API: Model: ${modelName}, Prompt: ${systemPrompt.length} chars, Text: ${textWithContext.length} chars`);
+    console.log(`📤 Ryuu API:`);
+    console.log(`   Model: ${modelName}`);
+    console.log(`   Prompt length: ${systemPrompt.length} chars`);
+    console.log(`   Text length: ${textWithContext.length} chars`);
     
     const response = await fetch('https://api.ryuu-dev.my.id/ai/gemini', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-RYUU-APIKEY': apiKey },
-        body: JSON.stringify({ text: textWithContext, prompt: systemPrompt, model: modelName || 'gemini-2.5-flash' })
+        headers: {
+            'Content-Type': 'application/json',
+            'X-RYUU-APIKEY': apiKey
+        },
+        body: JSON.stringify({
+            text: textWithContext,
+            prompt: systemPrompt,
+            model: modelName || 'gemini-2.5-flash'
+        })
     });
     
     if (!response.ok) {
@@ -226,9 +290,14 @@ async function callRyuuAPI(systemPrompt, historyMessages, userMessage, apiKey, m
     }
     
     const data = await response.json();
+    console.log('📦 Ryuu response:', JSON.stringify(data).substring(0, 200));
+    
+    // Ryuu API specific: { success: true, result: { response: "..." } }
     if (data.result?.response) return data.result.response;
     if (data.result?.text) return data.result.text;
     if (data.result?.message) return data.result.message;
+    
+    // Generic fallbacks
     if (data.response) return data.response;
     if (data.text) return data.text;
     if (data.message) return data.message;
@@ -247,11 +316,16 @@ async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
     
     if (historyMessages && historyMessages.length > 0) {
         for (const msg of historyMessages) {
-            messages.push({ role: msg.role === 'user' ? 'user' : 'assistant', content: msg.content });
+            messages.push({
+                role: msg.role === 'user' ? 'user' : 'assistant',
+                content: msg.content
+            });
         }
     }
     
     messages.push({ role: 'user', content: userMessage });
+    
+    console.log(`📝 ChatEverywhere: ${messages.length} messages`);
     
     const response = await fetch('https://chateverywhere.app/api/chat/', {
         method: 'POST',
@@ -261,7 +335,14 @@ async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
             'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36'
         },
         body: JSON.stringify({
-            model: { id: 'gpt-4', name: 'GPT-4', maxLength: 32000, tokenLimit: 8000, completionTokenLimit: 5000, deploymentName: 'gpt-4' },
+            model: {
+                id: 'gpt-4',
+                name: 'GPT-4',
+                maxLength: 32000,
+                tokenLimit: 8000,
+                completionTokenLimit: 5000,
+                deploymentName: 'gpt-4'
+            },
             messages: messages,
             prompt: systemPrompt,
             temperature: 0.55
@@ -270,25 +351,35 @@ async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
     
     if (!response.ok) {
         const errorText = await response.text();
+        console.error('❌ ChatEverywhere error:', response.status, errorText.substring(0, 200));
         throw new Error(`ChatEverywhere Status ${response.status}`);
     }
     
     const contentType = response.headers.get('content-type') || '';
     
+    // Try JSON first
     if (contentType.includes('application/json')) {
         try {
             const data = await response.json();
+            console.log('📦 ChatEverywhere response keys:', Object.keys(data));
+            
             if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
             if (data.response) return data.response;
             if (data.result) return data.result;
             if (data.message) return data.message;
             if (typeof data === 'string') return data;
             return JSON.stringify(data);
-        } catch (parseError) {}
+        } catch (parseError) {
+            console.error('❌ ChatEverywhere JSON parse error:', parseError.message);
+        }
     }
     
+    // Handle plain text response
     const text = await response.text();
-    if (text && text.trim()) return text;
+    if (text && text.trim()) {
+        console.log('📝 ChatEverywhere plain text:', text.substring(0, 100));
+        return text;
+    }
     
     throw new Error('ChatEverywhere returned empty response');
 }
@@ -302,14 +393,20 @@ async function callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey)
     
     if (historyMessages && historyMessages.length > 0) {
         for (const msg of historyMessages) {
-            contents.push({ role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.content }] });
+            contents.push({
+                role: msg.role === 'user' ? 'user' : 'model',
+                parts: [{ text: msg.content }]
+            });
         }
     }
     
     contents.push({ role: 'user', parts: [{ text: userMessage }] });
     
+    // Retry up to 3 times with exponential backoff
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
+            console.log(`📝 Gemini attempt ${attempt}: ${contents.length} contents`);
+            
             const response = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`,
                 {
@@ -317,31 +414,60 @@ async function callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey)
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents,
-                        generationConfig: { temperature: 0.7, maxOutputTokens: 1000, topP: 0.95, topK: 40 }
+                        generationConfig: {
+                            temperature: 0.7,
+                            maxOutputTokens: 1000,
+                            topP: 0.95,
+                            topK: 40
+                        }
                     })
                 }
             );
             
             if (response.status === 429) {
                 const errorData = await response.json().catch(() => ({}));
-                if (errorData?.error?.message?.includes('quota')) throw new Error('Gemini quota exceeded');
-                await new Promise(r => setTimeout(r, attempt * 3000 + Math.random() * 2000));
+                const isQuotaExceeded = errorData?.error?.message?.includes('quota');
+                
+                if (isQuotaExceeded) {
+                    console.error('❌ Gemini quota exceeded');
+                    throw new Error('Gemini quota exceeded - try again later');
+                }
+                
+                const waitTime = attempt * 3000 + Math.random() * 2000;
+                console.log(`⚠️ Rate limited, waiting ${Math.round(waitTime/1000)}s...`);
+                await new Promise(r => setTimeout(r, waitTime));
                 continue;
             }
             
             if (!response.ok) {
+                const errText = await response.text();
+                console.error(`❌ Gemini error ${response.status}:`, errText.substring(0, 200));
+                
                 if (attempt < 3) { await new Promise(r => setTimeout(r, 2000)); continue; }
                 throw new Error(`Gemini Status ${response.status}`);
             }
             
             const data = await response.json();
-            if (data.error) throw new Error(data.error.message || 'Gemini API error');
-            if (data.candidates?.[0]?.content?.parts?.[0]?.text) return data.candidates[0].content.parts[0].text;
-            if (data.candidates?.[0]?.finishReason === 'SAFETY') throw new Error('Response blocked by safety filter');
             
+            if (data.error) {
+                console.error('❌ Gemini API error:', data.error.message);
+                throw new Error(data.error.message || 'Gemini API error');
+            }
+            
+            if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                return data.candidates[0].content.parts[0].text;
+            }
+            
+            if (data.candidates?.[0]?.finishReason === 'SAFETY') {
+                throw new Error('Response blocked by safety filter');
+            }
+            
+            console.log('⚠️ Unexpected Gemini response format');
             return 'I apologize, but I could not generate a proper response. Please try again.';
+            
         } catch (e) {
             if (attempt === 3 || e.message?.includes('quota')) throw e;
+            console.log(`🔄 Gemini retry ${attempt}/3:`, e.message);
             await new Promise(r => setTimeout(r, 2000));
         }
     }
@@ -349,7 +475,7 @@ async function callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey)
     throw new Error('Gemini failed after 3 retries');
 }
 
-// Neosantara API
+// Neosantara API (OpenAI-compatible with Gemini models)
 async function callNeosantara(systemPrompt, historyMessages, userMessage, apiKey, modelName) {
     const messages = [{ role: 'system', content: systemPrompt }];
     if (historyMessages && historyMessages.length > 0) {
@@ -359,13 +485,26 @@ async function callNeosantara(systemPrompt, historyMessages, userMessage, apiKey
     }
     messages.push({ role: 'user', content: userMessage });
 
+    console.log(`📤 Neosantara: ${messages.length} messages, model: ${modelName}`);
+
     const response = await fetch('https://api.neosantara.xyz/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: modelName || 'gemini-3-flash', messages: messages, temperature: 0.5, max_tokens: 1300 })
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model: modelName || 'gemini-3-flash',
+            messages: messages,
+            temperature: 0.5,
+            max_tokens: 1300
+        })
     });
 
-    if (!response.ok) { const err = await response.text(); throw new Error(`Neosantara ${response.status}: ${err.substring(0, 100)}`); }
+    if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Neosantara ${response.status}: ${err.substring(0, 100)}`);
+    }
 
     const data = await response.json();
     if (data.choices?.[0]?.message?.content) return data.choices[0].message.content;
@@ -377,20 +516,39 @@ async function callNeosantara(systemPrompt, historyMessages, userMessage, apiKey
 // Generic Custom URL
 async function callGenericURL(url, systemPrompt, historyMessages, userMessage, apiKey) {
     const messages = [{ role: 'system', content: systemPrompt }];
+    
     if (historyMessages && historyMessages.length > 0) {
         for (const msg of historyMessages) {
-            messages.push({ role: msg.role === 'user' ? 'user' : 'assistant', content: msg.content });
+            messages.push({
+                role: msg.role === 'user' ? 'user' : 'assistant',
+                content: msg.content
+            });
         }
     }
+    
     messages.push({ role: 'user', content: userMessage });
     
-    const fullPrompt = systemPrompt + '\n\n' + (historyMessages || []).map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n') + '\nUser: ' + userMessage + '\nAssistant:';
+    const fullPrompt = systemPrompt + '\n\n' +
+        (historyMessages || []).map(m =>
+            `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`
+        ).join('\n') +
+        '\nUser: ' + userMessage + '\nAssistant:';
     
-    const headers = { 'Content-Type': 'application/json', 'Accept': '*/*', 'User-Agent': 'Mozilla/5.0' };
+    const headers = {
+        'Content-Type': 'application/json',
+        'Accept': '*/*',
+        'User-Agent': 'Mozilla/5.0'
+    };
+    
     if (apiKey) { headers['Authorization'] = `Bearer ${apiKey}`; }
     
     try {
-        const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ messages, prompt: systemPrompt, text: fullPrompt, message: userMessage, model: 'gpt-3.5-turbo' }) });
+        console.log(`📤 POST to custom: ${url}`);
+        const response = await fetch(url, {
+            method: 'POST', headers,
+            body: JSON.stringify({ messages, prompt: systemPrompt, text: fullPrompt, message: userMessage, model: 'gpt-3.5-turbo' })
+        });
+        
         if (response.ok) {
             const contentType = response.headers.get('content-type') || '';
             if (contentType.includes('application/json')) {
@@ -405,10 +563,12 @@ async function callGenericURL(url, systemPrompt, historyMessages, userMessage, a
             }
             return await response.text();
         }
-    } catch (e) {}
+        console.log(`⚠️ Custom POST failed with ${response.status}`);
+    } catch (e) { console.log(`⚠️ Custom POST error: ${e.message}`); }
     
     const getResponse = await fetch(`${url}?text=${encodeURIComponent(fullPrompt)}`);
     if (!getResponse.ok) throw new Error(`GET Status ${getResponse.status}`);
+    
     const contentType = getResponse.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
         const data = await getResponse.json();
@@ -422,9 +582,9 @@ async function getPackageById(packageId) {
     if (!packageId) return null;
     try {
         const { data, error } = await supabase.from('ai_packages').select('*').eq('id', packageId).single();
-        if (error) { return null; }
+        if (error) { console.error('Get package error:', error.message); return null; }
         return data;
-    } catch (e) { return null; }
+    } catch (e) { console.error('Get package exception:', e.message); return null; }
 }
 
 // ============================================
@@ -433,15 +593,17 @@ async function getPackageById(packageId) {
 async function callAI(systemPrompt, historyMessages, userMessage, characterEndpoint, packageId, charModelName) {
     const pkg = await getPackageById(packageId);
     let endpoint = characterEndpoint, apiKey = null;
-    if (pkg) { endpoint = pkg.url || endpoint; apiKey = pkg.api_key || null; }
+    if (pkg) { endpoint = pkg.url || endpoint; apiKey = pkg.api_key || null; console.log(`📦 Package: ${pkg.name} -> ${endpoint}`); }
 
     // NEOSANTARA PATH
     if (endpoint && endpoint.includes('neosantara')) {
         try {
-            const modelName = charModelName || pkg?.model_name || 'gpt-3.5-turbo';
+            console.log('🤖 Calling: Neosantara...');
+            const modelName = charModelName || 'gpt-3.5-turbo';
             const result = await callNeosantara(systemPrompt, historyMessages, userMessage, apiKey, modelName);
-            if (result && result.trim()) { return { response: result.trim(), source: 'Neosantara' }; }
+            if (result && result.trim()) { console.log('✅ Success: Neosantara'); return { response: result.trim(), source: 'Neosantara' }; }
         } catch (error) {
+            console.log('❌ Neosantara failed:', error.message);
             try { const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage); if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; } catch(fb) {}
             throw error;
         }
@@ -452,11 +614,13 @@ async function callAI(systemPrompt, historyMessages, userMessage, characterEndpo
         const key = apiKey || (endpoint && endpoint.includes(':') ? endpoint.split(':')[1] : null);
         if (!key) throw new Error('Gemini API key required');
         try {
+            console.log('🤖 Calling: Google Gemini...');
             const result = await callGeminiAPI(systemPrompt, historyMessages, userMessage, key);
-            if (result && result.trim()) { return { response: result.trim(), source: 'Gemini' }; }
+            if (result && result.trim()) { console.log('✅ Success: Gemini'); return { response: result.trim(), source: 'Gemini' }; }
         } catch (error) {
+            console.log('❌ Gemini failed:', error.message);
             if (!error.message?.includes('quota')) {
-                try { const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage); if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; } catch(fb) {}
+                try { const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage); if (result && result.trim()) { console.log('✅ Success: ChatEverywhere (fallback)'); return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; } } catch(fb) {}
             }
             throw error;
         }
@@ -465,13 +629,24 @@ async function callAI(systemPrompt, historyMessages, userMessage, characterEndpo
     // RYUU API PATH
     if (endpoint && endpoint.includes('ryuu')) {
         const key = apiKey || (endpoint.includes(':') ? endpoint.split(':')[1] : null);
-        if (!key) throw new Error('Ryuu API key required');
+        if (!key) throw new Error('Ryuu API key required (set in package api_key or endpoint as ryuu:APIKEY)');
         try {
-            const modelName = charModelName || pkg?.model_name || 'gemini-2.5-flash';
+            console.log('🤖 Calling: Ryuu API...');
+            const modelName = charModelName || 'gemini-2.5-flash';
             const result = await callRyuuAPI(systemPrompt, historyMessages, userMessage, key, modelName);
-            if (result && result.trim()) { return { response: result.trim(), source: 'Ryuu Gemini' }; }
+            if (result && result.trim()) { 
+                console.log('✅ Success: Ryuu'); 
+                return { response: result.trim(), source: 'Ryuu Gemini' }; 
+            }
         } catch (error) {
-            try { const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage); if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; } catch(fb) {}
+            console.log('❌ Ryuu failed:', error.message);
+            try { 
+                console.log('🔄 Falling back to ChatEverywhere...');
+                const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage); 
+                if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; 
+            } catch(fb) {
+                console.log('❌ Fallback also failed:', fb.message);
+            }
             throw error;
         }
     }
@@ -479,27 +654,30 @@ async function callAI(systemPrompt, historyMessages, userMessage, characterEndpo
     // CHATEVERYWHERE PATH
     if (!endpoint || endpoint === 'chateverywhere' || endpoint.includes('chateverywhere')) {
         try {
+            console.log('🤖 Calling: ChatEverywhere...');
             const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage);
-            if (result && result.trim()) { return { response: result.trim(), source: 'ChatEverywhere' }; }
+            if (result && result.trim()) { console.log('✅ Success: ChatEverywhere'); return { response: result.trim(), source: 'ChatEverywhere' }; }
         } catch (error) {
+            console.log('❌ ChatEverywhere failed:', error.message);
             if (apiKey) {
-                try { const result = await callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey); if (result && result.trim()) return { response: result.trim(), source: 'Gemini (fallback)' }; } catch(fb) {}
+                try { const result = await callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey); if (result && result.trim()) { console.log('✅ Success: Gemini (fallback)'); return { response: result.trim(), source: 'Gemini (fallback)' }; } } catch(fb) {}
             }
             throw error;
         }
     }
     
     // CUSTOM ENDPOINT PATH
+    console.log(`🤖 Trying custom: ${endpoint}...`);
     try {
         const result = await callGenericURL(endpoint, systemPrompt, historyMessages, userMessage, apiKey);
-        if (result && result.trim()) { return { response: result.trim(), source: 'Custom' }; }
-    } catch (error) {}
+        if (result && result.trim()) { console.log('✅ Success: Custom'); return { response: result.trim(), source: 'Custom' }; }
+    } catch (error) { console.log('❌ Custom failed:', error.message); }
     
     // Final fallback
     try {
         const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage);
-        if (result && result.trim()) { return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; }
-    } catch (error) {}
+        if (result && result.trim()) { console.log('✅ Success: ChatEverywhere (final)'); return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; }
+    } catch (error) { console.log('❌ Final fallback failed:', error.message); }
     
     throw new Error('All AI endpoints failed. Please try again later.');
 }
@@ -544,10 +722,20 @@ function buildMoodPrompt(mood, relationshipLevel, characterName, userName, charG
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { username, password, gender, email } = req.body;
-        if (!username || !password) return res.status(400).json({ error: 'Username and password are required' });
-        if (username.length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters' });
-        if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password are required' });
+        }
+        
+        if (username.length < 3) {
+            return res.status(400).json({ error: 'Username must be at least 3 characters' });
+        }
+        
+        if (password.length < 6) {
+            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        }
 
+        // Cek username & email unik
         const { data: existingUser } = await supabase.from('users').select('id').eq('username', username).single();
         if (existingUser) return res.status(400).json({ error: 'Username already taken' });
         
@@ -562,25 +750,39 @@ app.post('/api/auth/register', async (req, res) => {
         const { data: newUser, error } = await supabase
             .from('users')
             .insert({
-                username, email: userEmail, password_hash: passwordHash,
-                role: 'user', gender: gender || 'unknown', verified: false,
-                daily_message_count: 0, last_message_date: new Date().toISOString().split('T')[0],
-                is_banned: false, max_ai_characters: 5
+                username,
+                email: userEmail,
+                password_hash: passwordHash,
+                role: 'user',
+                gender: gender || 'unknown',
+                verified: false,
+                daily_message_count: 0,
+                last_message_date: new Date().toISOString().split('T')[0],
+                is_banned: false,
+                max_ai_characters: 5
             })
-            .select().single();
+            .select()
+            .single();
         
         if (error) throw error;
 
+        // Generate OTP & kirim email
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         await supabase.from('email_verifications').insert({
-            user_id: newUser.id, email: userEmail, otp: otp,
+            user_id: newUser.id,
+            email: userEmail,
+            otp: otp,
             expires_at: new Date(Date.now() + 10 * 60000).toISOString()
         });
         
         sendOTPEmail(userEmail, otp).catch(e => console.log('OTP send failed:', e.message));
 
+        // Log registration
         await supabase.from('logs').insert({
-            user_id: newUser.id, action: 'user_registered', details: { username }, ip_address: req.ip
+            user_id: newUser.id,
+            action: 'user_registered',
+            details: { username },
+            ip_address: req.ip
         });
 
         res.json({
@@ -589,20 +791,27 @@ app.post('/api/auth/register', async (req, res) => {
             requireOTP: true
         });
     } catch (error) {
+        console.error('Register error:', error);
         res.status(500).json({ error: 'Registration failed. Please try again.' });
     }
 });
 
+// Verify OTP
 app.post('/api/auth/verify-otp', async (req, res) => {
     try {
         const { email, otp } = req.body;
         if (!email || !otp) return res.status(400).json({ error: 'Email and OTP required' });
         
         const { data: verification } = await supabase
-            .from('email_verifications').select('*')
-            .eq('email', email).eq('otp', otp).eq('is_used', false)
+            .from('email_verifications')
+            .select('*')
+            .eq('email', email)
+            .eq('otp', otp)
+            .eq('is_used', false)
             .gt('expires_at', new Date().toISOString())
-            .order('created_at', { ascending: false }).limit(1).single();
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
         
         if (!verification) return res.status(400).json({ error: 'Invalid or expired OTP' });
         
@@ -613,6 +822,7 @@ app.post('/api/auth/verify-otp', async (req, res) => {
     } catch(e) { res.status(500).json({ error: 'Verification failed' }); }
 });
 
+// Resend OTP
 app.post('/api/auth/resend-otp', async (req, res) => {
     try {
         const { email } = req.body;
@@ -638,33 +848,61 @@ app.post('/api/auth/resend-otp', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-        if (!username || !password) return res.status(400).json({ error: 'Username and password are required' });
-
-        const { data: user, error } = await supabase.from('users').select('*').or(`username.eq.${username},email.eq.${username}`).single();
         
-        if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-        if (user.is_banned) return res.status(403).json({ error: 'Account is banned' });
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password are required' });
+        }
+
+        // Login dengan username ATAU email
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .or(`username.eq.${username},email.eq.${username}`)
+            .single();
+        
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        
+        if (user.is_banned) {
+            return res.status(403).json({ error: 'Account is banned' });
+        }
         
         if (user.verified === false) {
-            return res.status(403).json({ error: 'Email not verified. Please check your inbox.', requireOTP: true, email: user.email || user.username });
+            return res.status(403).json({ 
+                error: 'Email not verified. Please check your inbox.', 
+                requireOTP: true, 
+                email: user.email || user.username 
+            });
         }
 
         const valid = await passwordUtils.verify(password, user.password_hash);
-        if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+        if (!valid) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
 
+        // Check premium expiration
         if (user.role === 'premium' && user.premium_expired_at && new Date(user.premium_expired_at) < new Date()) {
             await supabase.from('users').update({ role: 'user', premium_expired_at: null }).eq('id', user.id);
             user.role = 'user';
         }
 
+        // Reset daily count if new day
         const today = new Date().toISOString().split('T')[0];
         if (user.last_message_date !== today) {
             await supabase.from('users').update({ daily_message_count: 0, last_message_date: today }).eq('id', user.id);
             user.daily_message_count = 0;
         }
 
-        await supabase.from('logs').insert({ user_id: user.id, action: 'user_login', details: { username: user.username }, ip_address: req.ip });
+        // Log login
+        await supabase.from('logs').insert({
+            user_id: user.id,
+            action: 'user_login',
+            details: { username: user.username },
+            ip_address: req.ip
+        });
 
+        // Set session
         req.session.userId = user.id;
         req.session.userRole = user.role;
         req.session.username = user.username;
@@ -672,9 +910,16 @@ app.post('/api/auth/login', async (req, res) => {
 
         res.json({
             message: 'Login successful',
-            user: { id: user.id, username: user.username, role: user.role, gender: user.gender, daily_message_count: user.daily_message_count || 0 }
+            user: {
+                id: user.id,
+                username: user.username,
+                role: user.role,
+                gender: user.gender,
+                daily_message_count: user.daily_message_count || 0
+            }
         });
     } catch (error) {
+        console.error('Login error:', error);
         res.status(500).json({ error: 'Login failed. Please try again.' });
     }
 });
@@ -689,7 +934,11 @@ app.post('/api/auth/logout', (req, res) => {
 app.get('/api/auth/me', async (req, res) => {
     if (!req.session.userId) { return res.status(401).json({ error: 'Not authenticated' }); }
     try {
-        const { data: user, error } = await supabase.from('users').select('id, username, role, gender').eq('id', req.session.userId).single();
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('id, username, role, gender')
+            .eq('id', req.session.userId)
+            .single();
         if (error) throw error;
         res.json({ user });
     } catch (error) { res.status(500).json({ error: 'Failed to get user data' }); }
@@ -716,6 +965,7 @@ app.put('/api/owner/settings', requireRole('owner'), async (req, res) => {
 // ============================================
 // CHANGE PASSWORD
 // ============================================
+
 app.put('/api/auth/password', requireAuth, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
@@ -730,9 +980,27 @@ app.put('/api/auth/password', requireAuth, async (req, res) => {
         
         const newHash = await passwordUtils.hash(newPassword);
         await supabase.from('users').update({ password_hash: newHash }).eq('id', req.session.userId);
-        await supabase.from('logs').insert({ user_id: req.session.userId, action: 'password_changed', details: { message: 'User changed their password' }, ip_address: req.ip });
+        
+        await supabase.from('logs').insert({
+            user_id: req.session.userId, action: 'password_changed',
+            details: { message: 'User changed their password' }, ip_address: req.ip
+        });
         
         res.json({ success: true, message: 'Password changed successfully' });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/owner/users/:userId/password', requireRole('owner'), async (req, res) => {
+    try {
+        const { newPassword } = req.body;
+        if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
+        const newHash = await passwordUtils.hash(newPassword);
+        await supabase.from('users').update({ password_hash: newHash }).eq('id', req.params.userId);
+        await supabase.from('logs').insert({
+            user_id: req.session.userId, action: 'owner_changed_password',
+            details: { message: `Owner changed password for user ${req.params.userId}` }, ip_address: req.ip
+        });
+        res.json({ success: true, message: 'Password changed for user' });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -748,26 +1016,23 @@ app.put('/api/auth/gender', requireAuth, async (req, res) => {
 });
 
 // ============================================
-// CHARACTER/AI ROUTES (Public + User's own)
+// CHARACTER/AI ROUTES
 // ============================================
+
 app.get('/api/characters', requireAuth, async (req, res) => {
     try {
         let query = supabase.from('characters').select('*');
-        
-        if (req.session.userRole === 'owner') {
-            query = query.in('status', ['online', 'active', 'maintenance']);
-        } else {
-            query = query.or(`created_by.eq.${req.session.userId},and(visibility.in.(public,all)${req.session.userRole === 'premium' ? ',visibility.in.(premium-only)' : ''})`);
-            query = query.in('status', ['online', 'active']);
-        }
+        if (req.session.userRole === 'owner') query = query.in('status', ['online', 'active', 'maintenance']);
+        else if (req.session.userRole === 'premium') query = query.in('status', ['online', 'active']).in('visibility', ['public', 'all', 'premium-only']);
+        else query = query.in('status', ['online', 'active']).in('visibility', ['public', 'all']);
         
         const { data: characters, error } = await query.order('name');
         if (error) throw error;
 
         if (!characters || characters.length === 0) {
             const defaults = [
-                { name: 'GPT-4 Assistant', avatar_url: '🤖', description: 'Asisten AI dengan GPT-4', system_prompt: 'Kamu adalah asisten AI profesional.', model_name: 'gpt-4', status: 'online', visibility: 'all', gender: 'female' },
-                { name: 'Creative Writer', avatar_url: '✍️', description: 'Spesialis konten kreatif', system_prompt: 'Kamu adalah AI penulis kreatif profesional.', model_name: 'gpt-4', status: 'online', visibility: 'all', gender: 'female' }
+                { name: 'GPT-4 Assistant', avatar_url: '🤖', description: 'Asisten AI dengan GPT-4', system_prompt: 'Kamu adalah asisten AI profesional.', endpoint_url: '', model_name: 'gpt-4', status: 'online', visibility: 'all', gender: 'female' },
+                { name: 'Creative Writer', avatar_url: '✍️', description: 'Spesialis konten kreatif', system_prompt: 'Kamu adalah AI penulis kreatif profesional.', endpoint_url: '', model_name: 'gpt-4', status: 'online', visibility: 'all', gender: 'female' }
             ];
             const { data: inserted } = await supabase.from('characters').insert(defaults).select();
             return res.json({ characters: inserted });
@@ -777,7 +1042,7 @@ app.get('/api/characters', requireAuth, async (req, res) => {
 });
 
 // ============================================
-// USER AI CHARACTERS (User-Generated)
+// USER AI CHARACTERS (User-Generated) - NEW FEATURE
 // ============================================
 
 // Get user's own AI characters
@@ -956,6 +1221,7 @@ app.delete('/api/chats/:chatId', requireAuth, async (req, res) => {
     } catch (error) { res.status(500).json({ error: 'Failed to delete chat' }); }
 });
 
+// Clear chat history
 app.delete('/api/chats/:id/history', requireAuth, async (req, res) => {
     await supabase.from('messages').delete().eq('chat_id', req.params.id);
     await supabase.from('chats').update({ relationship_level: 0, updated_at: new Date() }).eq('id', req.params.id).eq('user_id', req.session.userId);
@@ -963,7 +1229,7 @@ app.delete('/api/chats/:id/history', requireAuth, async (req, res) => {
 });
 
 // ============================================
-// SEND MESSAGE
+// SEND MESSAGE - WITH GENDER + ADULT CONTEXT
 // ============================================
 app.post('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
     try {
@@ -1004,9 +1270,10 @@ app.post('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
         if (mc <= 2) { const title = content.substring(0, 50) + (content.length > 50 ? '...' : ''); await supabase.from('chats').update({ title }).eq('id', chatId); }
 
         res.json({ userMessage: { role: 'user', content }, aiMessage: aiMsg, aiSource: source, relationshipLevel: newRel, remaining: Math.max(0, limit - (currentCount + 1)) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { console.error('Message error:', e); res.status(500).json({ error: e.message }); }
 });
 
+// Update chat mood
 app.put('/api/chats/:chatId/mood', requireAuth, async (req, res) => {
     try {
         const { mood } = req.body;
@@ -1032,94 +1299,54 @@ app.get('/api/user/stats', requireAuth, async (req, res) => {
 });
 
 // ============================================
+// AI PACKAGES (OWNER)
+// ============================================
+app.get('/api/owner/packages', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('ai_packages').select('*').order('name'); res.json({ packages: data || [] }); });
+app.post('/api/owner/packages', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('ai_packages').insert(req.body).select().single(); res.json({ package: data }); });
+app.put('/api/owner/packages/:id', requireRole('owner'), async (req, res) => { await supabase.from('ai_packages').update(req.body).eq('id', req.params.id); res.json({ success: true }); });
+app.delete('/api/owner/packages/:id', requireRole('owner'), async (req, res) => { await supabase.from('ai_packages').delete().eq('id', req.params.id); res.json({ success: true }); });
+
+// ============================================
 // OWNER ROUTES
 // ============================================
 app.get('/api/owner/stats', requireRole('owner'), async (req, res) => {
-    const [u,c,m,ch] = await Promise.all([
-        supabase.from('users').select('*',{count:'exact',head:true}),
-        supabase.from('chats').select('*',{count:'exact',head:true}),
-        supabase.from('messages').select('*',{count:'exact',head:true}),
-        supabase.from('characters').select('*',{count:'exact',head:true})
-    ]);
+    const [u,c,m,ch] = await Promise.all([supabase.from('users').select('*',{count:'exact',head:true}),supabase.from('chats').select('*',{count:'exact',head:true}),supabase.from('messages').select('*',{count:'exact',head:true}),supabase.from('characters').select('*',{count:'exact',head:true})]);
     res.json({ users:u.count||0, chats:c.count||0, messages:m.count||0, characters:ch.count||0 });
 });
-
-app.get('/api/owner/users', requireRole('owner'), async (req, res) => {
-    const { data } = await supabase.from('users').select('*').order('created_at',{ascending:false});
-    res.json({ users:(data||[]).map(({password_hash,...u})=>u) });
-});
-
+app.get('/api/owner/users', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('users').select('*').order('created_at',{ascending:false}); res.json({ users:(data||[]).map(({password_hash,...u})=>u) }); });
 app.put('/api/owner/users/:userId', requireRole('owner'), async (req, res) => {
     const updates = {};
     ['role','premium_expired_at','is_banned','daily_message_count','last_message_date','gender','verified','max_ai_characters'].forEach(k=>{ if(req.body[k]!==undefined) updates[k]=req.body[k]; });
     await supabase.from('users').update(updates).eq('id',req.params.userId);
     res.json({ success:true });
 });
-
 app.delete('/api/owner/users/:userId', requireRole('owner'), async (req, res) => {
     try {
-        if (req.params.userId === req.session.userId) return res.status(400).json({ error: 'Cannot delete yourself' });
+        if (req.params.userId === req.session.userId) {
+            return res.status(400).json({ error: 'Cannot delete yourself' });
+        }
+        
+        // Hapus data terkait dulu (cascade manual)
         await supabase.from('email_verifications').delete().eq('user_id', req.params.userId);
         await supabase.from('messages').delete().eq('user_id', req.params.userId);
         await supabase.from('chats').delete().eq('user_id', req.params.userId);
         await supabase.from('characters').delete().eq('created_by', req.params.userId);
         await supabase.from('logs').delete().eq('user_id', req.params.userId);
-        await supabase.from('users').delete().eq('id', req.params.userId);
+        
+        // Baru hapus user
+        const { error } = await supabase.from('users').delete().eq('id', req.params.userId);
+        if (error) throw error;
+        
         res.json({ success: true, message: 'User deleted' });
-    } catch (error) { res.status(500).json({ error: error.message }); }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
-
-// Owner Characters - dengan username creator
-app.get('/api/owner/characters', requireRole('owner'), async (req, res) => {
-    const { data } = await supabase
-        .from('characters')
-        .select('*, ai_packages(name, is_premium), creator:created_by(username)')
-        .order('created_at', { ascending: false });
-    res.json({ characters: data || [] });
-});
-
-app.post('/api/owner/characters', requireRole('owner'), async (req, res) => {
-    const { data } = await supabase.from('characters').insert({...req.body,created_by:req.session.userId}).select().single();
-    res.json({ character:data });
-});
-
-app.put('/api/owner/characters/:charId', requireRole('owner'), async (req, res) => {
-    await supabase.from('characters').update(req.body).eq('id',req.params.charId);
-    res.json({ success:true });
-});
-
-app.delete('/api/owner/characters/:charId', requireRole('owner'), async (req, res) => {
-    const { data: chats } = await supabase.from('chats').select('id').eq('character_id', req.params.charId);
-    if (chats) { for (const chat of chats) { await supabase.from('messages').delete().eq('chat_id', chat.id); } }
-    await supabase.from('chats').delete().eq('character_id', req.params.charId);
-    await supabase.from('characters').delete().eq('id', req.params.charId);
-    res.json({ success:true });
-});
-
-app.get('/api/owner/packages', requireRole('owner'), async (req, res) => {
-    const { data } = await supabase.from('ai_packages').select('*').order('name');
-    res.json({ packages: data || [] });
-});
-
-app.post('/api/owner/packages', requireRole('owner'), async (req, res) => {
-    const { data } = await supabase.from('ai_packages').insert(req.body).select().single();
-    res.json({ package: data });
-});
-
-app.put('/api/owner/packages/:id', requireRole('owner'), async (req, res) => {
-    await supabase.from('ai_packages').update(req.body).eq('id', req.params.id);
-    res.json({ success: true });
-});
-
-app.delete('/api/owner/packages/:id', requireRole('owner'), async (req, res) => {
-    await supabase.from('ai_packages').delete().eq('id', req.params.id);
-    res.json({ success: true });
-});
-
-app.get('/api/owner/logs', requireRole('owner'), async (req, res) => {
-    const { data } = await supabase.from('logs').select('*').order('created_at',{ascending:false}).limit(100);
-    res.json({ logs:data });
-});
+app.get('/api/owner/characters', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('characters').select('*, ai_packages(name)').order('created_at',{ascending:false}); res.json({ characters:data }); });
+app.post('/api/owner/characters', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('characters').insert({...req.body,created_by:req.session.userId}).select().single(); res.json({ character:data }); });
+app.put('/api/owner/characters/:charId', requireRole('owner'), async (req, res) => { await supabase.from('characters').update(req.body).eq('id',req.params.charId); res.json({ success:true }); });
+app.delete('/api/owner/characters/:charId', requireRole('owner'), async (req, res) => { await supabase.from('characters').delete().eq('id',req.params.charId); res.json({ success:true }); });
+app.get('/api/owner/logs', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('logs').select('*').order('created_at',{ascending:false}).limit(100); res.json({ logs:data }); });
 
 // ============================================
 // SERVER START
@@ -1129,9 +1356,12 @@ if (process.env.NODE_ENV !== 'production') {
         console.log('============================================');
         console.log('✨ c.ai By MikuHost - Server Ready');
         console.log(`📱 http://localhost:${PORT}`);
-        console.log(`🤖 User-Generated AI Characters: ON`);
+        console.log(`📧 Email OTP Verification: ON`);
+        console.log(`🔑 Login: username OR email`);
+        console.log(`🔒 Public settings: filtered (no API keys)`);
+        console.log(`👤 User-Generated AI Characters: ON`);
         console.log(`📦 Package System with Premium: ON`);
-        console.log(`🔒 Public settings: filtered`);
+        console.log(`🤖 ChatEverywhere + Gemini + Neosantara + Ryuu + Custom`);
         console.log('============================================');
     });
 }
