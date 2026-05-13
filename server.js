@@ -253,7 +253,7 @@ async function sendOTPEmail(email, otp) {
 // ============================================
 
 // Ryuu API (Gemini dengan struktur text + prompt terpisah)
-async function callRyuuAPI(systemPrompt, historyMessages, userMessage, apiKey, modelName) {
+async function callRyuuAPI(systemPrompt, historyMessages, userMessage, apiKey, modelName, packageUrl) {
     let contextHistory = '';
     if (historyMessages && historyMessages.length > 0) {
         const recentHistory = historyMessages.slice(-6);
@@ -266,12 +266,16 @@ async function callRyuuAPI(systemPrompt, historyMessages, userMessage, apiKey, m
         ? `${contextHistory}\nUser: ${userMessage}` 
         : userMessage;
     
+    // Gunakan URL dari package, fallback ke URL default
+    const apiUrl = packageUrl || 'https://api.ryuu-dev.my.id/ai/gemini/chat';
+    
     console.log(`📤 Ryuu API:`);
+    console.log(`   URL: ${apiUrl}`);
     console.log(`   Model: ${modelName}`);
     console.log(`   Prompt length: ${systemPrompt.length} chars`);
     console.log(`   Text length: ${textWithContext.length} chars`);
     
-    const response = await fetch('https://api.ryuu-dev.my.id/ai/gemini', {
+    const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -311,7 +315,7 @@ async function callRyuuAPI(systemPrompt, historyMessages, userMessage, apiKey, m
 }
 
 // ChatEverywhere API
-async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
+async function callChatEverywhere(systemPrompt, historyMessages, userMessage, packageUrl) {
     const messages = [{ role: 'system', content: systemPrompt }];
     
     if (historyMessages && historyMessages.length > 0) {
@@ -325,9 +329,13 @@ async function callChatEverywhere(systemPrompt, historyMessages, userMessage) {
     
     messages.push({ role: 'user', content: userMessage });
     
-    console.log(`📝 ChatEverywhere: ${messages.length} messages`);
+    // Gunakan URL dari package, fallback ke URL default
+    const apiUrl = packageUrl || 'https://chateverywhere.app/api/chat/';
     
-    const response = await fetch('https://chateverywhere.app/api/chat/', {
+    console.log(`📝 ChatEverywhere: ${messages.length} messages`);
+    console.log(`   URL: ${apiUrl}`);
+    
+    const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -627,44 +635,46 @@ async function callAI(systemPrompt, historyMessages, userMessage, characterEndpo
     }
     
     // RYUU API PATH
-    if (endpoint && endpoint.includes('ryuu')) {
-        const key = apiKey || (endpoint.includes(':') ? endpoint.split(':')[1] : null);
-        if (!key) throw new Error('Ryuu API key required (set in package api_key or endpoint as ryuu:APIKEY)');
-        try {
-            console.log('🤖 Calling: Ryuu API...');
-            const modelName = charModelName || 'gemini-2.5-flash';
-            const result = await callRyuuAPI(systemPrompt, historyMessages, userMessage, key, modelName);
-            if (result && result.trim()) { 
-                console.log('✅ Success: Ryuu'); 
-                return { response: result.trim(), source: 'Ryuu Gemini' }; 
-            }
-        } catch (error) {
-            console.log('❌ Ryuu failed:', error.message);
-            try { 
-                console.log('🔄 Falling back to ChatEverywhere...');
-                const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage); 
-                if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; 
-            } catch(fb) {
-                console.log('❌ Fallback also failed:', fb.message);
-            }
-            throw error;
+if (endpoint && endpoint.includes('ryuu')) {
+    const key = apiKey || (endpoint.includes(':') ? endpoint.split(':')[1] : null);
+    if (!key) throw new Error('Ryuu API key required (set in package api_key or endpoint as ryuu:APIKEY)');
+    try {
+        console.log('🤖 Calling: Ryuu API...');
+        const modelName = charModelName || 'gemini-2.5-flash';
+        const packageUrl = pkg?.url || null; // ← AMBIL DARI PACKAGE
+        const result = await callRyuuAPI(systemPrompt, historyMessages, userMessage, key, modelName, packageUrl);
+        if (result && result.trim()) { 
+            console.log('✅ Success: Ryuu'); 
+            return { response: result.trim(), source: 'Ryuu Gemini' }; 
         }
+    } catch (error) {
+        console.log('❌ Ryuu failed:', error.message);
+        try { 
+            console.log('🔄 Falling back to ChatEverywhere...');
+            const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage); 
+            if (result && result.trim()) return { response: result.trim(), source: 'ChatEverywhere (fallback)' }; 
+        } catch(fb) {
+            console.log('❌ Fallback also failed:', fb.message);
+        }
+        throw error;
     }
+}
     
-    // CHATEVERYWHERE PATH
-    if (!endpoint || endpoint === 'chateverywhere' || endpoint.includes('chateverywhere')) {
-        try {
-            console.log('🤖 Calling: ChatEverywhere...');
-            const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage);
-            if (result && result.trim()) { console.log('✅ Success: ChatEverywhere'); return { response: result.trim(), source: 'ChatEverywhere' }; }
-        } catch (error) {
-            console.log('❌ ChatEverywhere failed:', error.message);
-            if (apiKey) {
-                try { const result = await callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey); if (result && result.trim()) { console.log('✅ Success: Gemini (fallback)'); return { response: result.trim(), source: 'Gemini (fallback)' }; } } catch(fb) {}
-            }
-            throw error;
+  // CHATEVERYWHERE PATH
+if (!endpoint || endpoint === 'chateverywhere' || endpoint.includes('chateverywhere')) {
+    try {
+        console.log('🤖 Calling: ChatEverywhere...');
+        const packageUrl = pkg?.url || null; // ← AMBIL DARI PACKAGE
+        const result = await callChatEverywhere(systemPrompt, historyMessages, userMessage, packageUrl);
+        if (result && result.trim()) { console.log('✅ Success: ChatEverywhere'); return { response: result.trim(), source: 'ChatEverywhere' }; }
+    } catch (error) {
+        console.log('❌ ChatEverywhere failed:', error.message);
+        if (apiKey) {
+            try { const result = await callGeminiAPI(systemPrompt, historyMessages, userMessage, apiKey); if (result && result.trim()) { console.log('✅ Success: Gemini (fallback)'); return { response: result.trim(), source: 'Gemini (fallback)' }; } } catch(fb) {}
         }
+        throw error;
     }
+}
     
     // CUSTOM ENDPOINT PATH
     console.log(`🤖 Trying custom: ${endpoint}...`);
@@ -1025,7 +1035,7 @@ app.get('/api/characters', requireAuth, async (req, res) => {
         if (req.session.userRole === 'owner') {
             query = query.in('status', ['online', 'active', 'maintenance']);
         } else {
-            query = query.or(`created_by.eq.${req.session.userId},and(visibility.in.(public,all)${req.session.userRole === 'premium' ? ',visibility.in.(premium-only)' : ''})`);
+            query = query.or(`created_by.eq.${req.session.userId},visibility.eq.public,and(visibility.in.(public,all)${req.session.userRole === 'premium' ? ',visibility.in.(premium-only)' : ''})`);
             query = query.in('status', ['online', 'active']);
         }
         
@@ -1159,11 +1169,12 @@ app.post('/api/user/characters', requireAuth, async (req, res) => {
             endpointUrl = pkg.url || '';
         }
         
+      //  const { name, avatar_url, description, system_prompt, package_id, gender, visibility } = req.body;
         const { data, error } = await supabase.from('characters').insert({
             name, avatar_url: avatar_url || '🤖', description: description || '',
             system_prompt, package_id: package_id || null,
             model_name: modelName, endpoint_url: endpointUrl,
-            gender: gender || 'female', status: 'online', visibility: 'private',
+            gender: gender || 'female', status: 'online', visibility: req.body.visibility || 'private',
             created_by: req.session.userId
         }).select().single();
         
@@ -1189,7 +1200,7 @@ app.put('/api/user/characters/:id', requireAuth, async (req, res) => {
             return res.status(403).json({ error: 'Not your character' });
         }
         
-        const { name, avatar_url, description, system_prompt, package_id, model_name, gender } = req.body;
+        const { name, avatar_url, description, system_prompt, package_id, model_name, gender, visibility } = req.body;
         
         if (package_id && req.session.userRole === 'user') {
             const { data: pkg } = await supabase.from('ai_packages').select('is_premium').eq('id', package_id).single();
@@ -1197,15 +1208,16 @@ app.put('/api/user/characters/:id', requireAuth, async (req, res) => {
         }
         
         const updates = {};
-        if (name !== undefined) updates.name = name;
-        if (avatar_url !== undefined) updates.avatar_url = avatar_url;
-        if (description !== undefined) updates.description = description;
-        if (system_prompt !== undefined) updates.system_prompt = system_prompt;
-        if (package_id !== undefined) updates.package_id = package_id;
-        if (model_name !== undefined) updates.model_name = model_name;
-        if (gender !== undefined) updates.gender = gender;
-        
-        await supabase.from('characters').update(updates).eq('id', req.params.id);
+if (name !== undefined) updates.name = name;
+if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+if (description !== undefined) updates.description = description;
+if (system_prompt !== undefined) updates.system_prompt = system_prompt;
+if (package_id !== undefined) updates.package_id = package_id;
+if (model_name !== undefined) updates.model_name = model_name;
+if (gender !== undefined) updates.gender = gender;
+if (visibility !== undefined) updates.visibility = visibility;  // ← TAMBAH INI
+
+await supabase.from('characters').update(updates).eq('id', req.params.id);
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
