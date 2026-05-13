@@ -1,17 +1,25 @@
 ```markdown
 # 🤖 c.ai By MikuHost
 
-**AI Chat with WhatsApp-style interface** — Modern AI chat application with multiple AI characters, mood system, gender detection, relationship building, email verification, and user-generated AI characters.
+**AI Chat with modern glassmorphism UI** — Premium AI companion experience with multiple characters, mood system, gender detection, relationship building, email verification, user-generated AI, and built-in Spotify music player.
 
+---
+
+## 📸 Preview
+
+![c.ai Banner](https://cdn.aceimg.com/27a9dbe8f.jpg)
+![login page] https://cdn.aceimg.com/2e8c94ea9.jpg
+![Dashboard page] https://cdn.aceimg.com/e9d0d71ff.jpg
+![chat page] https://cdn.aceimg.com/2f7bd0505.jpg
 ---
 
 ## 📁 Project Structure
 
 ```
-
+```
 project/
 ├── index.html          # Login/Register page with OTP verification
-├── chat.html           # Main chat interface (with user AI creation)
+├── chat.html           # Main chat interface with AI creation & music player
 ├── owner.html          # Owner dashboard (manage users, AI, packages, settings)
 ├── qris.html           # QRIS donation page
 ├── server.js           # Backend Express server
@@ -21,26 +29,51 @@ project/
 └── README.md           # This file
 
 ```
-
+```
 ---
 
-## 🚀 Features
+## ✨ Features
 
-- 🤖 **AI Characters** — Multiple AI personalities with custom prompts
-- 👤 **User-Generated AI** — Users can create, edit, and delete their own AI characters
-- 📦 **AI Packages** — Owner can create packages (Free/Premium) with custom API endpoints & models
-- 🎭 **Mood System** — 7 moods: Happy, Neutral, Clingy, Annoyed, Sleepy, Caring, Adult
-- 👫 **Gender Detection** — AI auto-adjusts behavior based on user gender
-- 💕 **Relationship Level** — Build relationship 0-100 with AI
-- 🔞 **Adult Mode** — Premium/Owner only, same-gender blocked
-- 📧 **Email OTP Verification** — Secure registration with Resend API
-- 👑 **Owner Dashboard** — Manage users, AI characters, packages, settings, view logs
-- 🔌 **Multiple AI Providers** — ChatEverywhere (default), Google Gemini, Neosantara, Ryuu API, Custom URL
-- 🎨 **Glassmorphism UI** — Modern dark mode design
-- 📱 **Mobile Responsive** — Works on all devices
-- 🔄 **Context History** — 10 messages history for conversation continuity
-- ❤️ **Support QRIS** — Donation support for server costs
-- 🔒 **Security** — Public settings filtered (no API keys exposed), owner-only sensitive data
+### AI Chat
+- 🤖 **AI Characters** — Multiple AI personalities, system + user-generated
+- 👤 **User-Generated AI** — Create, edit, delete your own AI characters (limit: 5 free / 15 premium)
+- 🔒 **Visibility Control** — Users can set AI to Private or Public
+- 📦 **AI Packages** — Owner creates Free/Premium packages with custom API endpoints & models
+- 🎭 **Mood System** — 7 moods: Happy, Neutral, Clingy, Annoyed, Sleepy, Caring, Adult 🔞
+- 👫 **Gender Detection** — AI adjusts behavior based on user gender (Male/Female)
+- 💕 **Relationship Level** — Progress bar 0-100 based on chat interactions
+- 🔞 **Adult Mode** — Premium/Owner only, blocked for same-gender pairs
+- 🔄 **Context Memory** — Last 10 messages for conversation continuity
+- 🔌 **Dynamic API URLs** — All provider URLs configurable from database (no hardcode)
+
+### Music Player
+- 🎵 **Spotify Search** — Built-in search via NexRay API
+- ▶️ **Compact Player** — In sidebar, non-intrusive
+- 🎨 **Album Art Display** — Thumbnails from Spotify
+- 🔍 **Search with Button** — Separate search button, no Enter conflict
+
+### Security
+- 📧 **Email OTP Verification** — Secure registration via Resend API
+- 🔒 **Session Management** — Auto-redirect on expiry/banned
+- 🛡️ **Public Settings Filtered** — API keys never exposed to public endpoints
+- 🚫 **Premium Package Lock** — Free users can't use premium packages
+
+### Owner Dashboard
+- 📊 **Stats Overview** — Total users, chats, messages, AI characters
+- 👥 **User Management** — Ban/unban, premium, verify, delete users, AI limit control
+- 🤖 **AI Manager** — Edit/delete all AI characters (system + user-created)
+- 📦 **Package Manager** — Create/edit/delete packages with premium toggle, URL, API key, model
+- ⚙️ **Settings** — QRIS image, Resend API key, WhatsApp number
+- 📝 **Activity Logs** — Track user actions
+
+### UI/UX
+- 🎨 **Glassmorphism Design** — Blurred backgrounds, neon purple/pink glow
+- 🌙 **Dark Mode** — Immersive anime/cyberpunk aesthetic
+- 📱 **Mobile Responsive** — Full mobile support with hamburger menu
+- 💬 **Modern Chat Bubbles** — Gradient sent messages, glass received
+- ⏳ **Animated Typing Indicator** — Bouncing dots animation
+- ❌ **Custom Confirm Modal** — Replaces browser alert/confirm dialogs
+- 🎯 **Opacity Controls** — Edit/delete buttons at 70% opacity
 
 ---
 
@@ -48,18 +81,18 @@ project/
 
 - **Node.js** v16 or higher
 - **Supabase** account (free tier)
-- **Resend** account (for email OTP, free 100 emails/day)
+- **Resend** account (for email OTP, 100 free emails/day)
 - **Vercel** account (for deployment, optional)
 
 ---
 
 ## 🛠️ Installation
 
-### 1. Clone or download this project
+### 1. Clone or download
 
 ```bash
-git clone https://github.com/miku208/cai.git
-cd cai
+git clone https://github.com/miku208/cai-chat.git
+cd cai-chat
 ```
 
 2. Install dependencies
@@ -70,8 +103,7 @@ npm install
 
 3. Setup Supabase
 
-1. Go to supabase.com and create a new project
-2. Go to SQL Editor and run:
+Go to supabase.com → Create Project → SQL Editor → Run:
 
 ```sql
 -- Users table
@@ -104,7 +136,7 @@ CREATE TABLE IF NOT EXISTS characters (
     package_id UUID,
     gender TEXT DEFAULT 'female',
     status TEXT DEFAULT 'online',
-    visibility TEXT DEFAULT 'all',
+    visibility TEXT DEFAULT 'private',
     created_by UUID REFERENCES users(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -153,7 +185,7 @@ CREATE TABLE IF NOT EXISTS settings (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Email verifications table
+-- Email verifications
 CREATE TABLE IF NOT EXISTS email_verifications (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -174,219 +206,154 @@ CREATE TABLE IF NOT EXISTS logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Insert default settings
+-- Default data
 INSERT INTO settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
-
--- Insert default AI packages
 INSERT INTO ai_packages (name, url, is_premium) VALUES 
-    ('ChatEverywhere (GPT-4)', 'chateverywhere', false),
+    ('ChatEverywhere (GPT-4)', 'https://chateverywhere.app/api/chat/', false),
     ('Google Gemini Flash', 'gemini', false)
 ON CONFLICT DO NOTHING;
 ```
 
-1. Go to Project Settings → API
-2. Copy Project URL and anon public key
+Copy Project URL & anon public key from Settings → API.
 
-4. Configure the project
-
-Edit config.json:
+4. Configure config.json
 
 ```json
 {
   "supabase_url": "https://your-project-id.supabase.co",
-  "supabase_anon_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "supabase_anon_key": "eyJhbGciOiJIUzI1NiIs...",
   "session_secret": "your-random-secret-string-here"
 }
 ```
 
-5. Run the server
+5. Run
 
 ```bash
 npm start
+# → http://localhost:3000
 ```
-
-Server will run at http://localhost:3000
 
 ---
 
 📧 Setup Email OTP (Resend)
 
-1. Create Resend Account
-
-1. Go to resend.com
-2. Sign up with your email
-
-2. Verify Your Email (for testing)
-
-1. In Resend dashboard, go to Domains
-2. Click Add Email under the "Email" section
-3. Enter your personal email (e.g., yourname@gmail.com)
-4. Check your inbox and click the verification link
-
-3. Get API Key
-
-1. Go to API Keys in Resend dashboard
-2. Click Create API Key
-3. Copy the key (starts with re_)
-
-4. Enter Settings in Owner Dashboard
-
-1. Login to your app as owner
-2. Go to Dashboard tab
-3. Fill in:
-   · Resend API Key: re_xxx... (your API key)
-   · Sender Email: yourname@gmail.com (your verified email)
-4. Click Save
-
-5. For Production (send to anyone)
-
-1. In Resend, go to Domains → Add Domain
-2. Enter your domain (e.g., yourdomain.com)
-3. Follow DNS instructions (add TXT records)
-4. After verified, you can send from noreply@yourdomain.com
+1. Go to resend.com → Sign up
+2. Domains → Add Email (e.g. yourname@gmail.com) → Verify
+3. API Keys → Create → Copy key (re_xxx...)
+4. Login as owner → Dashboard tab → Fill:
+   · Resend API Key
+   · Sender Email
+5. For production: Add your domain in Resend → DNS verification → noreply@yourdomain.com
 
 ---
 
 👑 Create Owner Account
 
-1. Register a new user through the app (/)
-2. Go to Supabase Table Editor → users
-3. Find your user and change role to owner
-4. Login again to access owner dashboard at /owner
+1. Register at /
+2. Supabase Table Editor → users → Change role to owner
+3. Login → go to /owner
 
 ---
 
 🚀 Deploy to Vercel
 
-1. Install Vercel CLI
-
 ```bash
 npm i -g vercel
-```
-
-2. Deploy
-
-```bash
 vercel --prod
 ```
 
-Follow the prompts:
-
-· Existing project or create new
-· Root directory: . (current folder)
-· Build command: leave empty
-· Output directory: leave empty
-
-3. Environment Variables
-
-Add these in Vercel Dashboard → Settings → Environment Variables:
+Environment Variables (Vercel Dashboard → Settings):
 
 Key Value
-SUPABASE_URL Your Supabase project URL
+SUPABASE_URL Your Supabase URL
 SUPABASE_ANON_KEY Your Supabase anon key
 SESSION_SECRET Random secret string
 
-4. Vercel Config (vercel.json)
+vercel.json:
 
 ```json
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "server.js" }
-  ]
+  "builds": [{ "src": "server.js", "use": "@vercel/node" }],
+  "routes": [{ "src": "/(.*)", "dest": "server.js" }]
 }
 ```
 
 ---
 
-🔧 Adding New AI Providers
+🔧 Adding AI Providers
 
-Via Owner Dashboard
+Owner Dashboard → Packages → + Add Package
 
-1. Go to 📦 Packages
-2. Click + Add Package
-3. Fill in:
-   · Name: Provider name (e.g., Ryuu Gemini)
-   · URL: Identifier (ryuu, neosantara, gemini, or full URL)
-   · API Key: API key for the provider
-   · Model Name: Default model (e.g., gemini-2.5-flash)
-   · Premium: Toggle if only premium users can use
-4. Click Save
+Field Description Example
+Name Display name Ryuu Gemini
+URL API endpoint (editable anytime) https://api.ryuu-dev.my.id/ai/gemini/chat
+API Key Provider API key ryuu-apis-xxx
+Model Default model gemini-2.5-flash
+Premium Toggle (free users blocked) ✅/❌
 
-Assign Package to AI Character
+Available Providers
 
-1. Go to 🤖 AI Manager
-2. Edit or create AI character
-3. Select the package from dropdown
-4. System prompt + model auto-filled from package
+Provider URL Value Free
+ChatEverywhere (GPT-4) https://chateverywhere.app/api/chat/ ✅
+Google Gemini gemini Need key
+Neosantara neosantara or full URL Need key
+Ryuu API https://api.ryuu-dev.my.id/ai/gemini/chat Need key
+Custom URL Full endpoint URL —
 
----
-
-👤 User-Generated AI Characters
-
-Limits
-
-Role Max AI Characters
-User 5
-Premium 15
-Owner Unlimited
-
-Package Access
-
-Package Type User Premium Owner
-Free ✅ ✅ ✅
-Premium ❌ ✅ ✅
-
-How Users Create AI
-
-1. Login → /chat
-2. Click + Buat AI in sidebar
-3. Fill name, avatar, description, system prompt, gender
-4. Select package (auto-fills model)
-5. Click Simpan
-
-Users can edit/delete their own AI from 🤖 AI Saya tab.
+Note: All provider URLs are now dynamic — change them anytime from Owner Dashboard without editing server.js.
 
 ---
 
-📊 User Roles
+👤 User AI Creation
 
-Role Daily Limit Adult Mode Visibility Max AI Created
-User 50 messages ❌ Public + All 5
-Premium 200 messages ✅ Public + All + Premium-only 15
-Owner Unlimited ✅ All characters Unlimited
+Feature Free Premium Owner
+Max AI Created 5 15 ∞
+Visibility Control ✅ ✅ ✅
+Use Free Packages ✅ ✅ ✅
+Use Premium Packages ❌ ✅ ✅
+Adult Mode ❌ ✅ ✅
+Daily Messages 30 180 ∞
 
 ---
 
-🎨 Tech Stack
+🎵 Music Player Setup
 
-· Frontend: HTML, CSS, Vanilla JavaScript
-· Backend: Node.js, Express
-· Database: Supabase (PostgreSQL)
-· AI Providers: ChatEverywhere, Google Gemini, Neosantara, Ryuu API, Custom URL
-· Email: Resend API
-· Deployment: Vercel
+Music search uses NexRay Spotify API via proxy endpoint:
+
+· Search: /api/music/search?q=...
+· Stream: /api/music/stream?url=...
+· Default playlist: /api/music
+
+No additional API keys needed — works out of the box.
+
+---
+
+📊 Tech Stack
+
+Layer Technology
+Frontend HTML, CSS, Vanilla JS
+Backend Node.js, Express
+Database Supabase (PostgreSQL)
+Auth Express-session + OTP
+Email Resend API
+AI ChatEverywhere, Gemini, Neosantara, Ryuu, Custom
+Music NexRay Spotify API
+Deploy Vercel
 
 ---
 
 📝 License
 
-MIT License — Free for personal and commercial use.
+MIT — Free for personal & commercial use.
 
 ---
 
 💖 Support
 
-This project is free forever. If you find it useful, consider supporting via QRIS on the donation page (/qris).
+This project is free. Help keep servers running via QRIS at /qris.
 
 ---
 
-by MikuHost
+by MikuHost 🎀
 
-```
