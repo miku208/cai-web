@@ -1,11 +1,7 @@
 // ============================================
 // AI CHAT BACKEND SERVER - MODULAR
-// ChatEverywhere + Gemini + Neosantara + Ryuu + Custom
-// Gender + Mood + Adult System
-// Email OTP via Resend
-// User-Generated AI Characters with Package System + Visibility
-// Music Player via NexRay Spotify API
-// Security: Public settings FILTERED, Owner-only full settings
+// WITH GOOGLE GEMINI AI STUDIO VISION
+// Auto-switch to Gemini Vision when image detected
 // ============================================
 
 const express = require('express');
@@ -181,7 +177,7 @@ app.post('/api/auth/register', async (req, res) => {
             username, email: userEmail, password_hash: passwordHash,
             role: 'user', gender: gender || 'unknown', verified: false,
             daily_message_count: 0, last_message_date: new Date().toISOString().split('T')[0],
-            is_banned: false, max_ai_characters: 5
+            is_banned: false, max_ai_characters: 5, avatar_url: null
         }).select().single();
         if (error) throw error;
 
@@ -239,9 +235,9 @@ app.post('/api/auth/login', async (req, res) => {
         if (user.last_message_date !== today) { await supabase.from('users').update({ daily_message_count: 0, last_message_date: today }).eq('id', user.id); user.daily_message_count = 0; }
 
         await supabase.from('logs').insert({ user_id: user.id, action: 'user_login', details: { username: user.username }, ip_address: req.ip });
-        req.session.userId = user.id; req.session.userRole = user.role; req.session.username = user.username; req.session.userGender = user.gender;
+        req.session.userId = user.id; req.session.userRole = user.role; req.session.username = user.username; req.session.userGender = user.gender; req.session.userAvatar = user.avatar_url;
 
-        res.json({ message: 'Login successful', user: { id: user.id, username: user.username, role: user.role, gender: user.gender, daily_message_count: user.daily_message_count || 0 } });
+        res.json({ message: 'Login successful', user: { id: user.id, username: user.username, role: user.role, gender: user.gender, avatar_url: user.avatar_url, daily_message_count: user.daily_message_count || 0 } });
     } catch (error) { res.status(500).json({ error: 'Login failed. Please try again.' }); }
 });
 
@@ -249,8 +245,125 @@ app.post('/api/auth/logout', (req, res) => { req.session.destroy((err) => { if (
 
 app.get('/api/auth/me', async (req, res) => {
     if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
-    try { const { data: user, error } = await supabase.from('users').select('id, username, role, gender').eq('id', req.session.userId).single(); if (error) throw error; res.json({ user }); }
+    try { 
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('id, username, role, gender, avatar_url, created_at')
+            .eq('id', req.session.userId)
+            .single(); 
+        if (error) throw error; 
+        res.json({ user }); 
+    }
     catch (error) { res.status(500).json({ error: 'Failed to get user data' }); }
+});
+
+// ============================================
+// USER AVATAR & PROFILE ROUTES
+// ============================================
+
+app.put('/api/user/avatar', requireAuth, async (req, res) => {
+    try {
+        const { avatar_url } = req.body;
+        if (!avatar_url) return res.status(400).json({ error: 'Avatar URL is required' });
+        
+        const { error } = await supabase
+            .from('users')
+            .update({ avatar_url: avatar_url, updated_at: new Date() })
+            .eq('id', req.session.userId);
+        
+        if (error) throw error;
+        
+        req.session.userAvatar = avatar_url;
+        
+        res.json({ success: true, avatar_url });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/user/profile', requireAuth, async (req, res) => {
+    try {
+        const { data: user, error: userError } = await supabase
+            .from('users')
+            .select('id, username, role, gender, avatar_url, created_at')
+            .eq('id', req.session.userId)
+            .single();
+        if (userError) throw userError;
+        
+        const { count: totalChats } = await supabase
+            .from('chats')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', req.session.userId);
+        
+        const { count: totalAI } = await supabase
+            .from('characters')
+            .select('*', { count: 'exact', head: true })
+            .eq('created_by', req.session.userId);
+        
+        const { count: totalMessages } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', req.session.userId);
+        
+        const today = new Date().toISOString().split('T')[0];
+        const { data: userStats } = await supabase
+            .from('users')
+            .select('daily_message_count, last_message_date, role')
+            .eq('id', req.session.userId)
+            .single();
+        
+        const limit = getLimit(userStats?.role || 'user');
+        const used = userStats?.last_message_date === today ? (userStats.daily_message_count || 0) : 0;
+        const remainingLimit = Math.max(0, limit - used);
+        
+        res.json({
+            user: {
+                id: user.id,
+                username: user.username,
+                role: user.role,
+                gender: user.gender,
+                avatar_url: user.avatar_url,
+                created_at: user.created_at
+            },
+            stats: {
+                totalChats: totalChats || 0,
+                totalAI: totalAI || 0,
+                totalMessages: totalMessages || 0,
+                remainingLimit: remainingLimit,
+                dailyLimit: limit
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/user/messages-count', requireAuth, async (req, res) => {
+    try {
+        const { count, error } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', req.session.userId);
+        
+        if (error) throw error;
+        res.json({ count: count || 0 });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.get('/api/user/:userId/avatar', async (req, res) => {
+    try {
+        const { data: user } = await supabase
+            .from('users')
+            .select('avatar_url')
+            .eq('id', req.params.userId)
+            .single();
+        
+        res.json({ avatar_url: user?.avatar_url || null });
+    } catch (error) {
+        res.json({ avatar_url: null });
+    }
 });
 
 // ============================================
@@ -396,33 +509,88 @@ app.delete('/api/chats/:chatId', requireAuth, async (req, res) => { try { await 
 app.delete('/api/chats/:id/history', requireAuth, async (req, res) => { await supabase.from('messages').delete().eq('chat_id', req.params.id); await supabase.from('chats').update({ relationship_level: 0, updated_at: new Date() }).eq('id', req.params.id).eq('user_id', req.session.userId); res.json({ success: true, message: 'History cleared' }); });
 
 // ============================================
-// SEND MESSAGE
+// SEND MESSAGE (Auto-switch to Gemini Vision)
 // ============================================
 app.post('/api/chats/:chatId/messages', requireAuth, async (req, res) => {
     try {
-        const { content } = req.body; const chatId = req.params.chatId; if (!content || content.trim() === '') return res.status(400).json({ error: 'Message content is required' });
-        const today = new Date().toISOString().split('T')[0]; const { data: user } = await supabase.from('users').select('*').eq('id', req.session.userId).single();
-        const limit = getLimit(user.role); let currentCount = user.daily_message_count;
-        if (user.last_message_date !== today) { await supabase.from('users').update({ daily_message_count: 0, last_message_date: today }).eq('id', req.session.userId); currentCount = 0; }
+        const { content, has_image, image_url } = req.body;
+        const chatId = req.params.chatId;
+        
+        if (!content || content.trim() === '') return res.status(400).json({ error: 'Message content is required' });
+        
+        const today = new Date().toISOString().split('T')[0];
+        const { data: user } = await supabase.from('users').select('*').eq('id', req.session.userId).single();
+        const limit = getLimit(user.role);
+        let currentCount = user.daily_message_count;
+        
+        if (user.last_message_date !== today) {
+            await supabase.from('users').update({ daily_message_count: 0, last_message_date: today }).eq('id', req.session.userId);
+            currentCount = 0;
+        }
         if (currentCount >= limit) return res.status(429).json({ error: 'Daily limit reached', limit, current: currentCount });
+        
         const { data: chat } = await supabase.from('chats').select('*, characters(*)').eq('id', chatId).eq('user_id', req.session.userId).single();
         if (!chat) return res.status(404).json({ error: 'Chat not found' });
+        
         const { data: userMessage } = await supabase.from('messages').insert({ chat_id: chatId, user_id: req.session.userId, role: 'user', content }).select().single();
         await supabase.from('users').update({ daily_message_count: currentCount + 1, last_message_date: today }).eq('id', req.session.userId);
+        
         const { data: history } = await supabase.from('messages').select('role, content').eq('chat_id', chatId).order('created_at', { ascending: false }).limit(11);
         const ctx = (history || []).reverse().slice(0, -1);
-        const charGender = chat.characters.gender || 'female'; const userGender = user.gender || req.session.userGender || 'male';
+        
+        const charGender = chat.characters.gender || 'female';
+        const userGender = user.gender || req.session.userGender || 'male';
         const moodPrompt = buildMoodPrompt(chat.mood || 'neutral', chat.relationship_level || 0, chat.characters.name, req.session.username, charGender, userGender, user.role);
         const systemPrompt = `${chat.characters.system_prompt || 'You are a helpful assistant.'}\n\n${moodPrompt}\n\nCharacter name: ${chat.characters.name}\nUser's name: ${req.session.username}`;
-        const { response: aiText, source } = await callAI(supabase, systemPrompt, ctx, content, chat.characters.endpoint_url, chat.characters.package_id, chat.characters.model_name);
-        const aiResponse = aiText;
-        const { data: aiMsg } = await supabase.from('messages').insert({ chat_id: chatId, user_id: req.session.userId, role: 'assistant', content: aiResponse }).select().single();
+        
+        // Ambil package_id dari character
+        const packageId = chat.characters.package_id;
+        const endpoint = chat.characters.endpoint_url;
+        
+        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('📤 SEND MESSAGE');
+        console.log(`   Package ID: ${packageId}`);
+        console.log(`   Has Image: ${has_image}`);
+        console.log(`   Image URL: ${image_url ? image_url.substring(0, 50) + '...' : 'none'}`);
+        
+        // Kirim ke callAI - akan auto-switch ke Gemini Vision jika ada gambar
+        const { response: aiText, source } = await callAI(
+            supabase,
+            systemPrompt,
+            ctx,
+            content,
+            endpoint,
+            packageId,
+            null,
+            has_image || false,
+            image_url || null
+        );
+        
+        const { data: aiMsg } = await supabase.from('messages').insert({ chat_id: chatId, user_id: req.session.userId, role: 'assistant', content: aiText }).select().single();
+        
         const newRel = Math.min(100, (chat.relationship_level || 0) + 1);
         await supabase.from('chats').update({ relationship_level: newRel, updated_at: new Date() }).eq('id', chatId);
+        
         const { count: mc } = await supabase.from('messages').select('*', { count: 'exact', head: true }).eq('chat_id', chatId);
-        if (mc <= 2) { const title = content.substring(0, 50) + (content.length > 50 ? '...' : ''); await supabase.from('chats').update({ title }).eq('id', chatId); }
-        res.json({ userMessage: { role: 'user', content }, aiMessage: aiMsg, aiSource: source, relationshipLevel: newRel, remaining: Math.max(0, limit - (currentCount + 1)) });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+        if (mc <= 2) {
+            const title = content.substring(0, 50) + (content.length > 50 ? '...' : '');
+            await supabase.from('chats').update({ title }).eq('id', chatId);
+        }
+        
+        console.log(`✅ Response from: ${source}`);
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+        
+        res.json({ 
+            userMessage: { role: 'user', content }, 
+            aiMessage: aiMsg, 
+            aiSource: source, 
+            relationshipLevel: newRel, 
+            remaining: Math.max(0, limit - (currentCount + 1)) 
+        });
+    } catch (e) { 
+        console.error('❌ Send message error:', e);
+        res.status(500).json({ error: e.message }); 
+    }
 });
 
 app.put('/api/chats/:chatId/mood', requireAuth, async (req, res) => {
@@ -443,7 +611,7 @@ app.get('/api/owner/stats', requireRole('owner'), async (req, res) => {
     res.json({ users:u.count||0, chats:c.count||0, messages:m.count||0, characters:ch.count||0 });
 });
 app.get('/api/owner/users', requireRole('owner'), async (req, res) => { const { data } = await supabase.from('users').select('*').order('created_at',{ascending:false}); res.json({ users:(data||[]).map(({password_hash,...u})=>u) }); });
-app.put('/api/owner/users/:userId', requireRole('owner'), async (req, res) => { const updates = {}; ['role','premium_expired_at','is_banned','daily_message_count','last_message_date','gender','verified','max_ai_characters'].forEach(k=>{ if(req.body[k]!==undefined) updates[k]=req.body[k]; }); await supabase.from('users').update(updates).eq('id',req.params.userId); res.json({ success:true }); });
+app.put('/api/owner/users/:userId', requireRole('owner'), async (req, res) => { const updates = {}; ['role','premium_expired_at','is_banned','daily_message_count','last_message_date','gender','verified','max_ai_characters','avatar_url'].forEach(k=>{ if(req.body[k]!==undefined) updates[k]=req.body[k]; }); await supabase.from('users').update(updates).eq('id',req.params.userId); res.json({ success:true }); });
 app.delete('/api/owner/users/:userId', requireRole('owner'), async (req, res) => {
     try { if (req.params.userId === req.session.userId) return res.status(400).json({ error: 'Cannot delete yourself' }); await supabase.from('email_verifications').delete().eq('user_id', req.params.userId); await supabase.from('messages').delete().eq('user_id', req.params.userId); await supabase.from('chats').delete().eq('user_id', req.params.userId); await supabase.from('characters').delete().eq('created_by', req.params.userId); await supabase.from('logs').delete().eq('user_id', req.params.userId); const { error } = await supabase.from('users').delete().eq('id', req.params.userId); if (error) throw error; res.json({ success: true, message: 'User deleted' }); }
     catch (error) { res.status(500).json({ error: error.message }); }
@@ -476,6 +644,9 @@ if (process.env.NODE_ENV !== 'production') {
         console.log(`👤 User-Generated AI: ON`);
         console.log(`📦 Package System: ON`);
         console.log(`🎵 Music Player: ON`);
+        console.log(`🖼️ User Avatar Upload: ON`);
+        console.log(`📊 User Profile & Stats: ON`);
+        console.log(`👁️ Google Gemini Vision: ON (auto-switch when image detected)`);
         console.log(`🤖 ChatEverywhere + Gemini + Neosantara + Ryuu + Custom`);
         console.log('============================================');
     });
